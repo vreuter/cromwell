@@ -78,5 +78,5 @@ case class WomFloat(value: Double) extends WomPrimitive {
   }
   override def unaryPlus: Try[WomValue] = Success(WomFloat(math.abs(value)))
   override def unaryMinus: Try[WomValue] = Success(WomFloat(-value))
-  override def toWomString = value.toString
+  override def toWomString = String.format("%f", double2Double(value))
 }
