@@ -174,7 +174,7 @@ private[ejea] class MockEjea(helper: PerTestHelper,
   initializationData, restarting, serviceRegistryActor, ioActor,
   jobStoreActor, callCacheReadActor, callCacheWriteActor,
   dockerHashActor, jobTokenDispenserActor, None, backendName, callCachingMode,
-  if (restarting) RecoverJobCommand else ExecuteJobCommand
+  if (restarting) RecoverJobCommand else ExecuteJobCommand, None
 ) {
 
   implicit val system = context.system

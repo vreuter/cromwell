@@ -9,7 +9,6 @@ import cromwell.backend.{BackendInitializationData, BackendJobDescriptor, Runtim
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core.callcaching._
 import cromwell.core.simpleton.WomValueSimpleton
-import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCache._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheHashingJobActor.CallCacheHashingJobActorData._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheHashingJobActor._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.EngineJobHashingActor.CacheMiss
@@ -17,6 +16,8 @@ import javax.xml.bind.DatatypeConverter
 import wom.RuntimeAttributesKeys
 import wom.types._
 import wom.values._
+import CallCache._
+import cromwell.engine.FileHashCache.FileHashCache
 
 
 /**
@@ -41,7 +42,8 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
                                fileHashingActorProps: Props,
                                callCachingEligible: CallCachingEligible,
                                callCachingActivity: CallCachingActivity,
-                               callCachePathPrefixes: Option[CallCachePathPrefixes]
+                               callCachePathPrefixes: Option[CallCachePathPrefixes],
+                               fileHashCache: Option[FileHashCache]
                               ) extends LoggingFSM[CallCacheHashingJobActorState, CallCacheHashingJobActorData] {
 
   val fileHashingActor = makeFileHashingActor()
@@ -77,8 +79,8 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
   }
 
   when(HashingFiles) {
-    case Event(FileHashResponse(result), data) =>
-      addFileHash(result, data) match {
+    case Event(FileHashResponse(result, fileName), data) =>
+      addFileHash(result, fileName, data) match {
         case (newData, Some(partialHashes: PartialFileHashingResult)) =>
           sendToCallCacheReadingJobActor(partialHashes, data)
           // If there is no CCReader, send a message to itself to trigger the next batch
@@ -105,7 +107,14 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
   }
 
   // In its own function so it can be overridden in the test
-  private [callcaching] def addFileHash(hashResult: HashResult, data: CallCacheHashingJobActorData) = {
+  private [callcaching] def addFileHash(hashResult: HashResult, fileName: String, data: CallCacheHashingJobActorData) = {
+    import cats.syntax.validated._
+    for {
+      cache <- fileHashCache
+      // TODO where's the path to invalidNel?
+      _ = System.err.println(s"YO putting $fileName into the cache!!")
+      _ = cache.put(fileName, hashResult.hashValue.value.validNel)
+    } yield ()
     data.withFileHash(hashResult)
   }
 
@@ -133,8 +142,10 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
 
     val initialHashes = calculateInitialHashes(nonFileInputSimpletons, fileInputSimpletons)
 
+    val cacheAsMap = fileHashCache.map(_.asMap())
     val fileHashRequests = fileInputSimpletons collect {
-      case WomValueSimpleton(name, x: WomFile) => SingleFileHashRequest(jobDescriptor.key, HashKey(true, "input", s"File $name"), x, initializationData)
+      case WomValueSimpleton(name, f: WomFile) if !cacheAsMap.exists(_.containsKey(f.value)) =>
+        SingleFileHashRequest(jobDescriptor.key, HashKey(true, "input", s"File $name"), f, initializationData)
     }
 
     val hashingJobActorData = CallCacheHashingJobActorData(fileHashRequests.toList, callCacheReadingJobActor)
@@ -148,6 +159,7 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
     context.parent ! initialHashingResult
     
     // If there is no CCRead actor, we need to send ourselves the next NextBatchOfFileHashesRequest
+    // (I think this will be the case if cache writing is on and cache reading is off).
     if (hashingJobActorData.callCacheReadingJobActor.isEmpty) self ! NextBatchOfFileHashesRequest
   }
 
@@ -199,7 +211,8 @@ object CallCacheHashingJobActor {
             fileHashingActorProps: Props,
             callCachingEligible: CallCachingEligible,
             callCachingActivity: CallCachingActivity,
-            callCachePathPrefixes: Option[CallCachePathPrefixes]
+            callCachePathPrefixes: Option[CallCachePathPrefixes],
+            fileHashCache: Option[FileHashCache]
            ) = Props(new CallCacheHashingJobActor(
     jobDescriptor,
     callCacheReadingJobActor,
@@ -209,7 +222,8 @@ object CallCacheHashingJobActor {
     fileHashingActorProps,
     callCachingEligible,
     callCachingActivity,
-    callCachePathPrefixes
+    callCachePathPrefixes,
+    fileHashCache
   )).withDispatcher(EngineDispatcher)
 
   sealed trait CallCacheHashingJobActorState

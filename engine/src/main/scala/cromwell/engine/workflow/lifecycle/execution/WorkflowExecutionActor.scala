@@ -42,6 +42,7 @@ import wom.graph.expression.{ExposedExpressionNode, TaskCallInputExpressionNode}
 import wom.values._
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
+import cromwell.engine.FileHashCache.FileHashCache
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -80,13 +81,12 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
   // If executionStore returns a Failure about root workflow creating jobs more than total jobs per root workflow limit,
   // the WEA will fail by sending WorkflowExecutionFailedResponse to its parent and kill itself
   executionStore match {
-    case Valid(validExecutionStore) => {
+    case Valid(validExecutionStore) =>
       startWith(
         WorkflowExecutionPendingState,
         WorkflowExecutionActorData(workflowDescriptor, ioEc, new AsyncIo(params.ioActor, GcsBatchCommandBuilder), params.totalJobsByRootWf, validExecutionStore)
       )
-    }
-    case Invalid(e) => {
+    case Invalid(e) =>
       val errorMsg = s"Failed to initialize WorkflowExecutionActor. Error: $e"
       workflowLogger.error(errorMsg)
       context.parent ! WorkflowExecutionFailedResponse(Map.empty, new Exception(errorMsg))
@@ -100,7 +100,6 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
 
       workflowLogger.debug("Actor failed to initialize. Stopping self.")
       context.stop(self)
-    }
   }
 
   private def sendHeartBeat(): Unit = timers.startSingleTimer(ExecutionHeartBeatKey, ExecutionHeartBeat, ExecutionHeartBeatInterval)
@@ -613,7 +612,8 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
       backendSingleton,
       backendName,
       workflowDescriptor.callCachingMode,
-      command
+      command,
+      params.fileHashCache
     )
 
     val ejeaRef = context.actorOf(ejeaProps, ejeaName)
@@ -649,7 +649,8 @@ case class WorkflowExecutionActor(params: WorkflowExecutionActorParams)
         params.initializationData,
         params.startState,
         params.rootConfig,
-        params.totalJobsByRootWf), s"$workflowIdForLogging-SubWorkflowExecutionActor-${key.tag}"
+        params.totalJobsByRootWf,
+        params.fileHashCache), s"$workflowIdForLogging-SubWorkflowExecutionActor-${key.tag}"
     )
 
     context watch sweaRef
@@ -763,7 +764,8 @@ object WorkflowExecutionActor {
                                            initializationData: AllBackendInitializationData,
                                            startState: StartableState,
                                            rootConfig: Config,
-                                           totalJobsByRootWf: AtomicInteger
+                                           totalJobsByRootWf: AtomicInteger,
+                                           fileHashCache: Option[FileHashCache]
                                          )
 
   def props(workflowDescriptor: EngineWorkflowDescriptor,
@@ -779,7 +781,8 @@ object WorkflowExecutionActor {
             initializationData: AllBackendInitializationData,
             startState: StartableState,
             rootConfig: Config,
-            totalJobsByRootWf: AtomicInteger): Props = {
+            totalJobsByRootWf: AtomicInteger,
+            fileHashCache: Option[FileHashCache]): Props = {
     Props(
       WorkflowExecutionActor(
         WorkflowExecutionActorParams(
@@ -796,7 +799,8 @@ object WorkflowExecutionActor {
           initializationData,
           startState,
           rootConfig,
-          totalJobsByRootWf
+          totalJobsByRootWf,
+          fileHashCache
         )
       )
     ).withDispatcher(EngineDispatcher)

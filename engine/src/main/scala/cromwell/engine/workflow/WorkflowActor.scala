@@ -4,13 +4,16 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor._
+import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
+import common.validation.ErrorOr.ErrorOr
 import cromwell.backend._
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core.WorkflowOptions.FinalWorkflowLogDir
 import cromwell.core._
 import cromwell.core.logging.{WorkflowLogger, WorkflowLogging}
 import cromwell.core.path.{PathBuilder, PathFactory}
+import cromwell.engine.FileHashCache.FileHashCache
 import cromwell.engine._
 import cromwell.engine.backend.BackendSingletonCollection
 import cromwell.engine.instrumentation.WorkflowInstrumentation
@@ -161,7 +164,8 @@ object WorkflowActor {
             backendSingletonCollection: BackendSingletonCollection,
             serverMode: Boolean,
             workflowHeartbeatConfig: WorkflowHeartbeatConfig,
-            totalJobsByRootWf: AtomicInteger): Props = {
+            totalJobsByRootWf: AtomicInteger,
+            fileHashCacheConfig: Option[CacheConfig]): Props = {
     Props(
       new WorkflowActor(
         workflowId = workflowId,
@@ -181,7 +185,8 @@ object WorkflowActor {
         backendSingletonCollection = backendSingletonCollection,
         serverMode = serverMode,
         workflowHeartbeatConfig = workflowHeartbeatConfig,
-        totalJobsByRootWf = totalJobsByRootWf)).withDispatcher(EngineDispatcher)
+        totalJobsByRootWf = totalJobsByRootWf,
+        fileHashCacheConfig = fileHashCacheConfig)).withDispatcher(EngineDispatcher)
   }
 }
 
@@ -205,7 +210,8 @@ class WorkflowActor(val workflowId: WorkflowId,
                     backendSingletonCollection: BackendSingletonCollection,
                     serverMode: Boolean,
                     workflowHeartbeatConfig: WorkflowHeartbeatConfig,
-                    totalJobsByRootWf: AtomicInteger)
+                    totalJobsByRootWf: AtomicInteger,
+                    fileHashCacheConfig: Option[CacheConfig])
   extends LoggingFSM[WorkflowActorState, WorkflowActorData] with WorkflowLogging with WorkflowMetadataHelper
   with WorkflowInstrumentation with Timers {
 
@@ -218,6 +224,14 @@ class WorkflowActor(val workflowId: WorkflowId,
 
   private val workflowDockerLookupActor = context.actorOf(
     WorkflowDockerLookupActor.props(workflowId, dockerHashActor, initialStartableState.restarted), s"WorkflowDockerLookupActor-$workflowId")
+
+  val fileHashCache: Option[FileHashCache] = fileHashCacheConfig map { c =>
+    CacheBuilder.newBuilder()
+      .concurrencyLevel(c.concurrency)
+      .expireAfterAccess(c.ttl.length, c.ttl.unit)
+      .maximumSize(c.size)
+      .build[String, ErrorOr[String]]()
+  }
 
   startWith(WorkflowUnstartedState, WorkflowActorData(initialStartableState))
 
@@ -293,10 +307,11 @@ class WorkflowActor(val workflowId: WorkflowId,
         initializationData,
         startState = data.effectiveStartableState,
         rootConfig = conf,
-        totalJobsByRootWf = totalJobsByRootWf), name = s"WorkflowExecutionActor-$workflowId")
+        totalJobsByRootWf = totalJobsByRootWf,
+        fileHashCache = fileHashCache), name = s"WorkflowExecutionActor-$workflowId")
 
       executionActor ! ExecuteWorkflowCommand
-      
+
       val nextState = data.effectiveStartableState match {
         case RestartableAborting => WorkflowAbortingState
         case _ => ExecutingWorkflowState

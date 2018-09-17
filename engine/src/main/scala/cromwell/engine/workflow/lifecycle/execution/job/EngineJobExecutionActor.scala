@@ -16,6 +16,7 @@ import cromwell.core.simpleton.WomValueSimpleton
 import cromwell.database.sql.joins.CallCachingJoin
 import cromwell.database.sql.tables.CallCachingEntry
 import cromwell.engine.EngineWorkflowDescriptor
+import cromwell.engine.FileHashCache.FileHashCache
 import cromwell.engine.instrumentation.JobInstrumentation
 import cromwell.engine.workflow.lifecycle.execution.WorkflowExecutionActor.RequestValueStore
 import cromwell.engine.workflow.lifecycle.execution._
@@ -59,7 +60,8 @@ class EngineJobExecutionActor(replyTo: ActorRef,
                               backendSingletonActor: Option[ActorRef],
                               backendName: String,
                               callCachingMode: CallCachingMode,
-                              command: BackendJobExecutionActorCommand) extends LoggingFSM[EngineJobExecutionActorState, EJEAData]
+                              command: BackendJobExecutionActorCommand,
+                              fileHashCache: Option[FileHashCache]) extends LoggingFSM[EngineJobExecutionActorState, EJEAData]
   with WorkflowLogging with CallMetadataHelper with JobInstrumentation with TimedFSM[EngineJobExecutionActorState] {
 
   override val workflowIdForLogging = workflowDescriptor.id
@@ -555,7 +557,8 @@ class EngineJobExecutionActor(replyTo: ActorRef,
           backendName,
           activity,
           callCachingEligible,
-          callCachePathPrefixes
+          callCachePathPrefixes,
+          fileHashCache
         )
         val ejha = context.actorOf(props, s"ejha_for_$jobDescriptor")
 
@@ -775,7 +778,8 @@ object EngineJobExecutionActor {
             backendSingletonActor: Option[ActorRef],
             backendName: String,
             callCachingMode: CallCachingMode,
-            command: BackendJobExecutionActorCommand) = {
+            command: BackendJobExecutionActorCommand,
+            fileHashCache: Option[FileHashCache]) = {
     Props(new EngineJobExecutionActor(
       replyTo = replyTo,
       jobDescriptorKey = jobDescriptorKey,
@@ -793,7 +797,8 @@ object EngineJobExecutionActor {
       backendSingletonActor = backendSingletonActor,
       backendName = backendName: String,
       callCachingMode = callCachingMode,
-      command = command)).withDispatcher(EngineDispatcher)
+      command = command,
+      fileHashCache = fileHashCache)).withDispatcher(EngineDispatcher)
   }
 
   case class EJEACacheHit(hit: CacheHit, hitNumber: Int, details: Option[String])

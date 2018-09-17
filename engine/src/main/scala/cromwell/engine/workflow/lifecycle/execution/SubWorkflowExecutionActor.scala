@@ -9,6 +9,7 @@ import cromwell.backend.{AllBackendInitializationData, BackendLifecycleActorFact
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core._
 import cromwell.core.logging.JobLogging
+import cromwell.engine.FileHashCache.FileHashCache
 import cromwell.engine.backend.{BackendConfiguration, BackendSingletonCollection}
 import cromwell.engine.workflow.WorkflowMetadataHelper
 import cromwell.engine.workflow.lifecycle.EngineLifecycleActorAbortCommand
@@ -42,7 +43,8 @@ class SubWorkflowExecutionActor(key: SubWorkflowKey,
                                 initializationData: AllBackendInitializationData,
                                 startState: StartableState,
                                 rootConfig: Config,
-                                totalJobsByRootWf: AtomicInteger) extends LoggingFSM[SubWorkflowExecutionActorState, SubWorkflowExecutionActorData] with JobLogging with WorkflowMetadataHelper with CallMetadataHelper {
+                                totalJobsByRootWf: AtomicInteger,
+                                fileHashCache: Option[FileHashCache]) extends LoggingFSM[SubWorkflowExecutionActorState, SubWorkflowExecutionActorData] with JobLogging with WorkflowMetadataHelper with CallMetadataHelper {
 
   override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() { case _ => Escalate }
 
@@ -202,7 +204,8 @@ class SubWorkflowExecutionActor(key: SubWorkflowKey,
         initializationData,
         startState,
         rootConfig,
-        totalJobsByRootWf
+        totalJobsByRootWf,
+        fileHashCache
       ),
       s"${subWorkflowEngineDescriptor.id}-SubWorkflowActor-${key.tag}"
     )
@@ -314,7 +317,8 @@ object SubWorkflowExecutionActor {
             initializationData: AllBackendInitializationData,
             startState: StartableState,
             rootConfig: Config,
-            totalJobsByRootWf: AtomicInteger) = {
+            totalJobsByRootWf: AtomicInteger,
+            fileHashCache: Option[FileHashCache]) = {
     Props(new SubWorkflowExecutionActor(
       key,
       parentWorkflow,
@@ -332,7 +336,8 @@ object SubWorkflowExecutionActor {
       initializationData,
       startState,
       rootConfig,
-      totalJobsByRootWf)
+      totalJobsByRootWf,
+      fileHashCache)
     ).withDispatcher(EngineDispatcher)
   }
 }

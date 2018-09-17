@@ -1,5 +1,6 @@
 package cromwell.engine.workflow
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.FSM.{CurrentState, SubscribeTransitionCallBack, Transition}
@@ -10,14 +11,16 @@ import com.typesafe.config.Config
 import common.exception.ThrowableAggregation
 import cromwell.backend.async.KnownJobFailureException
 import cromwell.core.Dispatcher.EngineDispatcher
-import cromwell.core.{WorkflowAborted, WorkflowId}
+import cromwell.core.{CacheConfig, WorkflowAborted, WorkflowId}
+import cromwell.engine.SubWorkflowStart
 import cromwell.engine.backend.BackendSingletonCollection
 import cromwell.engine.workflow.WorkflowActor._
 import cromwell.engine.workflow.WorkflowManagerActor._
+
 import cromwell.engine.workflow.workflowstore.{WorkflowHeartbeatConfig, WorkflowStoreActor, WorkflowStoreEngineActor}
-import cromwell.engine.SubWorkflowStart
 import cromwell.jobstore.JobStoreActor.{JobStoreWriteFailure, JobStoreWriteSuccess, RegisterWorkflowCompleted}
 import cromwell.webservice.EngineStatsActor
+import mouse.all._
 import net.ceedubs.ficus.Ficus._
 import org.apache.commons.lang3.exception.ExceptionUtils
 
@@ -278,6 +281,14 @@ class WorkflowManagerActor(params: WorkflowManagerActorParams)
       logger.debug(s"$tag transitioning from $fromState to $toState")
   }
 
+  private val fileHashCacheConfig: Option[CacheConfig] = for {
+    caching <- config.as[Option[Config]]("call-caching.file-hash-cache")
+    _ <- caching.as[Option[Boolean]]("enabled").contains(true).option(())
+    ttl = caching.as[Option[FiniteDuration]]("ttl").getOrElse(FiniteDuration.apply(10, TimeUnit.HOURS))
+    concurrency = caching.as[Option[Int]]("concurrency").getOrElse(1000)
+    size = caching.as[Option[Long]]("size").getOrElse(10000L)
+  } yield CacheConfig(concurrency, size, ttl)
+
   /**
     * Submit the workflow and return an updated copy of the state data reflecting the addition of a
     * Workflow ID -> WorkflowActorRef entry.
@@ -309,7 +320,8 @@ class WorkflowManagerActor(params: WorkflowManagerActorParams)
       backendSingletonCollection = params.backendSingletonCollection,
       serverMode = params.serverMode,
       workflowHeartbeatConfig = params.workflowHeartbeatConfig,
-      totalJobsByRootWf = new AtomicInteger())
+      totalJobsByRootWf = new AtomicInteger(),
+      fileHashCacheConfig = fileHashCacheConfig)
     val wfActor = context.actorOf(wfProps, name = s"WorkflowActor-$workflowId")
 
     wfActor ! SubscribeTransitionCallBack(self)

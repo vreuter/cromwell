@@ -4,16 +4,16 @@ import akka.actor.{ActorLogging, ActorRef, Props}
 import cats.data.NonEmptyList
 import cromwell.backend.BackendJobDescriptorKey
 import cromwell.core.Dispatcher.EngineDispatcher
-import cromwell.core.{LoadConfig, WorkflowId}
 import cromwell.core.actor.BatchActor.CommandAndReplyTo
 import cromwell.core.callcaching.HashResult
 import cromwell.core.instrumentation.InstrumentationPrefixes
+import cromwell.core.{LoadConfig, WorkflowId}
+import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCache._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheReadActor._
 import cromwell.services.EnhancedThrottlerActor
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
-import CallCache._
 
 /**
   * Queues up work sent to it because its receive is non-blocking.

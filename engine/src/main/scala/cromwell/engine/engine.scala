@@ -1,6 +1,8 @@
 package cromwell.engine
 
 import akka.actor.ActorRef
+import com.google.common.cache.Cache
+import common.validation.ErrorOr.ErrorOr
 import wdl.draft2.model._
 
 import scala.util.{Failure, Success, Try}
@@ -23,3 +25,8 @@ case object ContinueWhilePossible extends WorkflowFailureMode { override val all
 case object NoNewCalls extends WorkflowFailureMode { override val allowNewCallsAfterFailure = false }
 
 case class SubWorkflowStart(actorRef: ActorRef)
+
+object FileHashCache {
+  type FileHashCache = Cache[String, ErrorOr[String]]
+}
+

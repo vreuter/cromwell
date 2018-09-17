@@ -53,7 +53,7 @@ object StandardFileHashingActor {
   final case class SingleFileHashRequest(jobKey: JobKey, hashKey: HashKey, file: WomFile, initializationData: Option[BackendInitializationData]) extends BackendSpecificHasherCommand
 
   sealed trait BackendSpecificHasherResponse extends SuccessfulHashResultMessage
-  case class FileHashResponse(hashResult: HashResult) extends BackendSpecificHasherResponse { override def hashes = Set(hashResult) }
+  case class FileHashResponse(hashResult: HashResult, fileName: String) extends BackendSpecificHasherResponse { override def hashes = Set(hashResult) }
 }
 
 abstract class StandardFileHashingActor(standardParams: StandardFileHashingActorParams)
@@ -77,14 +77,14 @@ abstract class StandardFileHashingActor(standardParams: StandardFileHashingActor
     // Hash Request
     case fileRequest: SingleFileHashRequest =>
       customHashStrategy(fileRequest) match {
-        case Some(Success(result)) => context.parent ! FileHashResponse(HashResult(fileRequest.hashKey, HashValue(result)))
+        case Some(Success(result)) => context.parent ! FileHashResponse(HashResult(fileRequest.hashKey, HashValue(result)), fileRequest.file.value)
         case Some(Failure(failure)) => context.parent ! HashingFailedMessage(fileRequest.file.value, failure)
         case None => asyncHashing(fileRequest, context.parent)
       }
 
     // Hash Success
     case (fileHashRequest: FileHashContext, IoSuccess(_, result: String)) =>
-      context.parent ! FileHashResponse(HashResult(fileHashRequest.hashKey, HashValue(result)))
+      context.parent ! FileHashResponse(HashResult(fileHashRequest.hashKey, HashValue(result)), fileHashRequest.file)
 
     // Hash Failure
     case (fileHashRequest: FileHashContext, IoFailure(_, failure: Throwable)) =>

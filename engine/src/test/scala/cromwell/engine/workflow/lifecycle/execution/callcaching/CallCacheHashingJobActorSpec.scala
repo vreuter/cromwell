@@ -47,7 +47,8 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
       Props.empty,
       DockerWithHash("ubuntu@sha256:blablablba"),
       CallCachingActivity(readWriteMode = ReadCache),
-      callCachePathPrefixes = None
+      callCachePathPrefixes = None,
+      fileHashCache = None
     ), parent.ref)
     watch(testActor)
     expectTerminated(testActor)
@@ -82,7 +83,8 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
       Props.empty,
       DockerWithHash("ubuntu@sha256:blablablba"),
       CallCachingActivity(readWriteMode = ReadAndWriteCache),
-      callCachePathPrefixes = None
+      callCachePathPrefixes = None,
+      fileHashCache = None
     ), parent.ref)
     
     val expectedInitialHashes = Set(
@@ -129,11 +131,12 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
       Props.empty,
       DockerWithHash("ubuntu@256:blablabla"),
       CallCachingActivity(readWriteMode = if (writeToCache) ReadAndWriteCache else ReadCache),
-      callCachePathPrefixes = None
+      callCachePathPrefixes = None,
+      fileHashCache = None
     ) {
       override def makeFileHashingActor() = testFileHashingActor
-      override def addFileHash(hashResult: HashResult, data: CallCacheHashingJobActorData) = {
-        addFileHashMockResult.getOrElse(super.addFileHash(hashResult, data))
+      override def addFileHash(hashResult: HashResult, fileName: String, data: CallCacheHashingJobActorData) = {
+        addFileHashMockResult.getOrElse(super.addFileHash(hashResult, fileName, data))
       }
     }, parent)
   }
@@ -191,7 +194,7 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
 
     cchja.setState(HashingFiles)
 
-    cchja ! FileHashResponse(mock[HashResult])
+    cchja ! FileHashResponse(mock[HashResult], "/some/file")
 
     callCacheReadProbe.expectMsgClass(classOf[InitialHashingResult])
     callCacheReadProbe.expectMsg(result)
@@ -211,7 +214,7 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
     watch(cchja)
     cchja.setState(HashingFiles)
 
-    cchja ! FileHashResponse(mock[HashResult])
+    cchja ! FileHashResponse(mock[HashResult], "/some/file")
 
     // This proves that the ccjha keeps hashing files even though there is no ccreader requesting more hashes
     fileHashingActor.expectMsg(fileHashRequest)
@@ -231,7 +234,7 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
       parent.watch(cchja)
       cchja.setState(HashingFiles)
 
-      cchja ! FileHashResponse(mock[HashResult])
+      cchja ! FileHashResponse(mock[HashResult], "/some/file")
 
       callCacheReadProbe.expectMsg(result)
       parent.expectMsg(result)
@@ -250,7 +253,7 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
 
     cchja.setState(HashingFiles)
 
-    cchja ! FileHashResponse(mock[HashResult])
+    cchja ! FileHashResponse(mock[HashResult], "/some/file")
 
     callCacheReadProbe.expectNoMessage()
     parent.expectNoMessage()
@@ -283,7 +286,7 @@ class CallCacheHashingJobActorSpec extends TestKitSuite with FlatSpecLike with B
     system stop callCacheReadProbe.ref
     fileHasher.expectMsg(fileHashRequest)
     val result: HashResult = HashResult(hashKey, HashValue("fileHash"))
-    fileHasher.reply(FileHashResponse(result))
+    fileHasher.reply(FileHashResponse(result, "/some/file"))
 
     parent.expectMsg(CompleteFileHashingResult(Set(result), "45F27DD26834DBACBB05BBB1D651F5D1"))
   }

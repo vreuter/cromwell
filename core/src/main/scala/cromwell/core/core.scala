@@ -3,10 +3,14 @@ package cromwell.core
 import cromwell.core.path.Path
 import common.exception.ThrowableAggregation
 
+import scala.concurrent.duration.FiniteDuration
+
 
 case class StandardPaths(output: Path, error: Path)
 
 case class CallContext(root: Path, standardPaths: StandardPaths, isDocker: Boolean)
+
+case class CacheConfig(concurrency: Int, size: Long, ttl: FiniteDuration)
 
 /**  Marker trait for Cromwell exceptions that are to be treated as fatal (non-retryable) */
 trait CromwellFatalExceptionMarker { this: Throwable => }
