@@ -20,7 +20,7 @@ import cromwell.core.ExecutionStatus._
 import cromwell.core._
 import cromwell.core.io.AsyncIo
 import cromwell.core.logging.WorkflowLogging
-import cromwell.engine.EngineWorkflowDescriptor
+import cromwell.engine.{EngineWorkflowDescriptor, FileHashCache}
 import cromwell.engine.backend.{BackendSingletonCollection, CromwellBackends}
 import cromwell.engine.workflow.lifecycle.execution.WorkflowExecutionActor._
 import cromwell.engine.workflow.lifecycle.execution.WorkflowExecutionActorData.DataStoreUpdate
@@ -42,7 +42,6 @@ import wom.graph.expression.{ExposedExpressionNode, TaskCallInputExpressionNode}
 import wom.values._
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
-import cromwell.engine.FileHashCache.FileHashCache
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

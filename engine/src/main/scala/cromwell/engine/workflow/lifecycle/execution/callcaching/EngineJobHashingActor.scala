@@ -6,7 +6,7 @@ import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core.WorkflowId
 import cromwell.core.callcaching._
 import cromwell.core.logging.JobLogging
-import cromwell.engine.FileHashCache.FileHashCache
+import cromwell.engine.FileHashCache
 import cromwell.engine.workflow.lifecycle.execution.CallMetadataHelper
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCache.CallCachePathPrefixes
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheHashingJobActor.{CompleteFileHashingResult, FinalFileHashingResult, InitialHashingResult, NoFileHashesResult}

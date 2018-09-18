@@ -4,11 +4,14 @@ import java.security.MessageDigest
 
 import akka.actor.{ActorRef, LoggingFSM, Props, Terminated}
 import cats.data.NonEmptyList
+import cats.syntax.validated._
 import cromwell.backend.standard.callcaching.StandardFileHashingActor.{FileHashResponse, SingleFileHashRequest}
 import cromwell.backend.{BackendInitializationData, BackendJobDescriptor, RuntimeAttributeDefinition}
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core.callcaching._
 import cromwell.core.simpleton.WomValueSimpleton
+import cromwell.engine.FileHashCache
+import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCache._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheHashingJobActor.CallCacheHashingJobActorData._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheHashingJobActor._
 import cromwell.engine.workflow.lifecycle.execution.callcaching.EngineJobHashingActor.CacheMiss
@@ -16,8 +19,6 @@ import javax.xml.bind.DatatypeConverter
 import wom.RuntimeAttributesKeys
 import wom.types._
 import wom.values._
-import CallCache._
-import cromwell.engine.FileHashCache.FileHashCache
 
 
 /**
@@ -101,6 +102,7 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
       stopAndStay(None)
     case Event(error: HashingFailedMessage, data) =>
       log.error(error.reason, s"Failed to hash ${error.file}")
+      fileHashCache foreach { _.update(error.file, error.reason.getMessage.invalidNel) }
       sendToCallCacheReadingJobActor(error, data)
       context.parent ! error
       stopAndStay(None)
@@ -111,9 +113,7 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
     import cats.syntax.validated._
     for {
       cache <- fileHashCache
-      // TODO where's the path to invalidNel?
-      _ = System.err.println(s"YO putting $fileName into the cache!!")
-      _ = cache.put(fileName, hashResult.hashValue.value.validNel)
+      _ = cache.update(fileName, hashResult.hashValue.value.validNel)
     } yield ()
     data.withFileHash(hashResult)
   }
@@ -142,9 +142,9 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
 
     val initialHashes = calculateInitialHashes(nonFileInputSimpletons, fileInputSimpletons)
 
-    val cacheAsMap = fileHashCache.map(_.asMap())
     val fileHashRequests = fileInputSimpletons collect {
-      case WomValueSimpleton(name, f: WomFile) if !cacheAsMap.exists(_.containsKey(f.value)) =>
+      case WomValueSimpleton(name, f: WomFile) if fileHashCache.exists { _.isFirstHashRequest(f.value) } =>
+        System.err.println("MAKING A GOSH DARNED FILE HASHING REQUEST")
         SingleFileHashRequest(jobDescriptor.key, HashKey(true, "input", s"File $name"), f, initializationData)
     }
 

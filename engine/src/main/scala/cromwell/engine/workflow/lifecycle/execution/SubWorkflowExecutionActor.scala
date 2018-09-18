@@ -9,7 +9,6 @@ import cromwell.backend.{AllBackendInitializationData, BackendLifecycleActorFact
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core._
 import cromwell.core.logging.JobLogging
-import cromwell.engine.FileHashCache.FileHashCache
 import cromwell.engine.backend.{BackendConfiguration, BackendSingletonCollection}
 import cromwell.engine.workflow.WorkflowMetadataHelper
 import cromwell.engine.workflow.lifecycle.EngineLifecycleActorAbortCommand
@@ -21,7 +20,7 @@ import cromwell.engine.workflow.lifecycle.execution.job.preparation.SubWorkflowP
 import cromwell.engine.workflow.lifecycle.execution.keys.SubWorkflowKey
 import cromwell.engine.workflow.lifecycle.execution.stores.ValueStore
 import cromwell.engine.workflow.workflowstore.StartableState
-import cromwell.engine.{EngineIoFunctions, EngineWorkflowDescriptor, SubWorkflowStart}
+import cromwell.engine.{EngineIoFunctions, EngineWorkflowDescriptor, FileHashCache, SubWorkflowStart}
 import cromwell.services.metadata.MetadataService._
 import cromwell.services.metadata._
 import cromwell.subworkflowstore.SubWorkflowStoreActor._

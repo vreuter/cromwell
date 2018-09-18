@@ -4,16 +4,13 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor._
-import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
-import common.validation.ErrorOr.ErrorOr
 import cromwell.backend._
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core.WorkflowOptions.FinalWorkflowLogDir
 import cromwell.core._
 import cromwell.core.logging.{WorkflowLogger, WorkflowLogging}
 import cromwell.core.path.{PathBuilder, PathFactory}
-import cromwell.engine.FileHashCache.FileHashCache
 import cromwell.engine._
 import cromwell.engine.backend.BackendSingletonCollection
 import cromwell.engine.instrumentation.WorkflowInstrumentation
@@ -225,13 +222,7 @@ class WorkflowActor(val workflowId: WorkflowId,
   private val workflowDockerLookupActor = context.actorOf(
     WorkflowDockerLookupActor.props(workflowId, dockerHashActor, initialStartableState.restarted), s"WorkflowDockerLookupActor-$workflowId")
 
-  val fileHashCache: Option[FileHashCache] = fileHashCacheConfig map { c =>
-    CacheBuilder.newBuilder()
-      .concurrencyLevel(c.concurrency)
-      .expireAfterAccess(c.ttl.length, c.ttl.unit)
-      .maximumSize(c.size)
-      .build[String, ErrorOr[String]]()
-  }
+  val fileHashCache: Option[FileHashCache] = fileHashCacheConfig map FileHashCache
 
   startWith(WorkflowUnstartedState, WorkflowActorData(initialStartableState))
 

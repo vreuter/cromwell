@@ -15,8 +15,7 @@ import cromwell.core.logging.WorkflowLogging
 import cromwell.core.simpleton.WomValueSimpleton
 import cromwell.database.sql.joins.CallCachingJoin
 import cromwell.database.sql.tables.CallCachingEntry
-import cromwell.engine.EngineWorkflowDescriptor
-import cromwell.engine.FileHashCache.FileHashCache
+import cromwell.engine.{EngineWorkflowDescriptor, FileHashCache}
 import cromwell.engine.instrumentation.JobInstrumentation
 import cromwell.engine.workflow.lifecycle.execution.WorkflowExecutionActor.RequestValueStore
 import cromwell.engine.workflow.lifecycle.execution._
