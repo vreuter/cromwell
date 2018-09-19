@@ -115,7 +115,7 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
       cache <- fileHashCache
       _ = cache.update(fileName, hashResult.hashValue.value.validNel)
     } yield ()
-    data.withFileHash(hashResult)
+    data.withFileHash(hashResult, jobDescriptor, fileHashCache)
   }
 
   private def stopAndStay(fileHashResult: Option[FinalFileHashingResult]) = {
@@ -130,22 +130,14 @@ class CallCacheHashingJobActor(jobDescriptor: BackendJobDescriptor,
   }
 
   private def initializeCCHJA(): Unit = {
-    import cromwell.core.simpleton.WomValueSimpleton._
-
-    val unqualifiedInputs = jobDescriptor.evaluatedTaskInputs map { case (declaration, value) => declaration.name -> value }
-
-    val inputSimpletons = unqualifiedInputs.simplifyForCaching
-    val (fileInputSimpletons, nonFileInputSimpletons) = inputSimpletons partition {
-      case WomValueSimpleton(_, _: WomFile) => true
-      case _ => false
-    }
+    val (fileInputSimpletons, nonFileInputSimpletons) = fileAndNotFileSimpletons(jobDescriptor)
 
     val initialHashes = calculateInitialHashes(nonFileInputSimpletons, fileInputSimpletons)
 
     val fileHashRequests = fileInputSimpletons collect {
-      case WomValueSimpleton(name, f: WomFile) if fileHashCache.exists { _.isFirstHashRequest(f.value) } =>
-        System.err.println("MAKING A GOSH DARNED FILE HASHING REQUEST")
-        SingleFileHashRequest(jobDescriptor.key, HashKey(true, "input", s"File $name"), f, initializationData)
+      case s @ WomValueSimpleton(_, f: WomFile) if fileHashCache.exists { _.hashRequestRequired(f.value) } =>
+        System.err.println(s"MAKING A GOSH DARNED FILE HASHING REQUEST FOR ${f.value}")
+        SingleFileHashRequest(jobDescriptor.key, hashKeyForFileSimpleton(s), f, initializationData)
     }
 
     val hashingJobActorData = CallCacheHashingJobActorData(fileHashRequests.toList, callCacheReadingJobActor)
@@ -247,6 +239,20 @@ object CallCacheHashingJobActor {
     DatatypeConverter.printHexBinary(messageDigest.digest())
   }
 
+  private def fileAndNotFileSimpletons(jobDescriptor: BackendJobDescriptor): (Iterable[WomValueSimpleton], Iterable[WomValueSimpleton]) = {
+    import cromwell.core.simpleton.WomValueSimpleton._
+
+    val unqualifiedInputs = jobDescriptor.evaluatedTaskInputs map { case (declaration, value) => declaration.name -> value }
+    val inputSimpletons = unqualifiedInputs.simplifyForCaching
+
+    inputSimpletons partition {
+      case WomValueSimpleton(_, _: WomFile) => true
+      case _ => false
+    }
+  }
+
+  private def hashKeyForFileSimpleton(simpleton: WomValueSimpleton) = HashKey(checkForHitOrMiss = true, "input", s"File ${simpleton.simpletonKey}")
+
   object CallCacheHashingJobActorData {
     // Slick will eventually build a prepared statement with that many parameters. Don't set this too high or it will stackoverflow.
     val BatchSize = 100
@@ -266,7 +272,7 @@ object CallCacheHashingJobActor {
     /**
       * Returns the updated state data along with an optional message to be sent back to CCRJA and parent.
       */
-    def withFileHash(hashResult: HashResult): (CallCacheHashingJobActorData, Option[CCHJAFileHashResponse]) = {
+    def withFileHash(hashResult: HashResult, jobDescriptor: BackendJobDescriptor, fileHashCache: Option[FileHashCache]): (CallCacheHashingJobActorData, Option[CCHJAFileHashResponse]) = {
       // Add the hash result to the list of known hash results
       val newFileHashResults = hashResult +: fileHashResults
 
@@ -277,7 +283,28 @@ object CallCacheHashingJobActor {
           val updatedBatch = lastBatch.filterNot(_.hashKey == hashResult.hashKey)
           // If we're processing the last batch, and it's now empty, then we're done
           // In that case compute the aggregated hash and send that
-          if (updatedBatch.isEmpty) (List.empty, Option(CompleteFileHashingResult(newFileHashResults.toSet, calculateHashAggregation(newFileHashResults, md5Digest))))
+          if (updatedBatch.isEmpty) {
+            fileHashCache match {
+              // Due to the dazzling new file hash caching `newFileHashResults` will likely not contain all the hashes
+              // for the input files since the hash values may have been in the cache and this job would not have needed to
+              // request them. So look up hash values from the cache for all file inputs here.
+              case Some(cache) =>
+                val (fileSimpletons, _) = fileAndNotFileSimpletons(jobDescriptor)
+                val set: Set[WomValueSimpleton] = fileSimpletons.toSet
+                val hashResults: Set[HashResult] = set.map { s =>
+                  val fileValue = s.simpletonValue.asInstanceOf[WomFile].value
+                  HashResult(
+                    hashKey = hashKeyForFileSimpleton(s),
+                    // Hash values must be in the cache now (unless they've expired) so .get is safe (unless they're gone).
+                    // So maybe we shouldn't expire hashes.
+                    hashValue = HashValue(cache.get(fileValue).get.valueOr({_ => "Aw crap"}))
+                  )
+                }
+                (List.empty, Option(CompleteFileHashingResult(hashResults, calculateHashAggregation(newFileHashResults, md5Digest))))
+              case None =>
+                (List.empty, Option(CompleteFileHashingResult(newFileHashResults.toSet, calculateHashAggregation(newFileHashResults, md5Digest))))
+            }
+          }
           // Otherwise just return the updated batch and no message
           else (List(updatedBatch), None)
         case currentBatch :: otherBatches =>

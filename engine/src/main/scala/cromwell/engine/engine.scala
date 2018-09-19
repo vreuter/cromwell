@@ -29,7 +29,7 @@ case object NoNewCalls extends WorkflowFailureMode { override val allowNewCallsA
 
 case class SubWorkflowStart(actorRef: ActorRef)
 
-case class FileHashCacheValue(requested: AtomicBoolean, hashValue: Option[ErrorOr[String]])
+case class FileHashCacheValue(hashRequestRequired: AtomicBoolean, hashValue: Option[ErrorOr[String]])
 
 case class FileHashCache(c: CacheConfig) {
   val guavaCache: LoadingCache[String, FileHashCacheValue] =
@@ -40,15 +40,17 @@ case class FileHashCache(c: CacheConfig) {
     .build[String, FileHashCacheValue](new CacheLoader[String, FileHashCacheValue] {
     override def load(key: String): FileHashCacheValue =
       FileHashCacheValue(
-        requested = new AtomicBoolean(false),
+        hashRequestRequired = new AtomicBoolean(true),
         hashValue = None
       )
   })
 
-  def isFirstHashRequest(key: String): Boolean = {
-    guavaCache.get(key).requested.compareAndSet(false, true)
+  def hashRequestRequired(key: String): Boolean = {
+    guavaCache.get(key).hashRequestRequired.compareAndSet(true, false)
   }
 
   def update(key: String, value: ErrorOr[String]): Unit =
-    guavaCache.put(key, FileHashCacheValue(requested = new AtomicBoolean(true), hashValue = Option(value)))
+    guavaCache.put(key, FileHashCacheValue(hashRequestRequired = new AtomicBoolean(false), hashValue = Option(value)))
+
+  def get(key: String): Option[ErrorOr[String]] = guavaCache.get(key).hashValue
 }

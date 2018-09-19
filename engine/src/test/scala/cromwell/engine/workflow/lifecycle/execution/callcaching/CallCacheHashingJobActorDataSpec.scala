@@ -85,8 +85,8 @@ class CallCacheHashingJobActorDataSpec extends TestKitSuite with FlatSpecLike wi
   )
   
   it should "process new file hashes" in {
-    forAll(testCases) { case ((oldData, newData, result)) =>
-      oldData.withFileHash(fileHash1) shouldBe (newData -> result)
+    forAll(testCases) { case (oldData, newData, result) =>
+      oldData.withFileHash(fileHash1, null, None) shouldBe (newData -> result)
     }
   }
 }
