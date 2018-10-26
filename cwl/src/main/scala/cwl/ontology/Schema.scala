@@ -153,7 +153,8 @@ object Schema {
   // Loading the ontology can fail transiently, so put retires around it. See https://github.com/protegeproject/webprotege/issues/298
   private [ontology] def loadOntologyFromIri(ontologyManager: OWLOntologyManager, iri: IRI): OWLOntology = {
     val load = IO { ontologyManager.loadOntologyFromOntologyDocument(iri) }
-    IORetry.withRetry[OWLOntology, Unit](load, (), ontologyConfiguration.retries, ontologyConfiguration.backoff).unsafeRunSync()
+    val logOnRetry = IORetry.logOnRetry[Unit](s"Failed to parse $iri. Retrying", logger)
+    IORetry.withRetry[OWLOntology, Unit](load, (), ontologyConfiguration.retries, ontologyConfiguration.backoff, onRetry = logOnRetry).unsafeRunSync()
   }
 
   /**

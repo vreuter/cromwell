@@ -1,12 +1,17 @@
 package common.util
 
 import cats.effect.{IO, Timer}
+import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 object IORetry {
   def noOpOnRetry[S]: (Throwable, S) => S = (_, s) => s
+  def logOnRetry[S](context: String, logger: Logger): (Throwable, S) => S = (t, s) => {
+    logger.warn(context, t)
+    s
+  }
   
   object StatefulIoError {
     def noop[S] = new StatefulIoError[S] {
