@@ -470,7 +470,7 @@ object ServicesStoreSpec {
     }
   }
 
-  private def databaseForSchemaManager(databaseType: String, schemaManager: String): SlickDatabase = {
+  private def databaseForSchemaManager(databaseType: String, schemaManager: String): SlickDatabase = synchronized(this) {
     val databaseConfig = ConfigFactory.parseString(
       s"""
          |db.url = "jdbc:hsqldb:mem:$${uniqueSchema};shutdown=false;hsqldb.tx=mvcc"
