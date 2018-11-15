@@ -5,12 +5,12 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.NonEmptyList
 import cromwell.core.Dispatcher._
-import cromwell.core.abort.{WorkflowAbortFailureResponse, WorkflowAbortedResponse, WorkflowAbortingResponse}
-import cromwell.core.{WorkflowAborted, WorkflowAborting, WorkflowId, WorkflowSubmitted}
+import cromwell.core.abort._
+import cromwell.core.{WorkflowAborting, WorkflowId, WorkflowSubmitted}
 import cromwell.engine.instrumentation.WorkflowInstrumentation
 import cromwell.engine.workflow.WorkflowManagerActor.WorkflowNotFoundException
 import cromwell.engine.workflow.WorkflowMetadataHelper
-import cromwell.engine.workflow.workflowstore.SqlWorkflowStore.{WorkflowStoreAbortResponse, WorkflowStoreState}
+import cromwell.engine.workflow.workflowstore.SqlWorkflowStore.WorkflowStoreState
 import cromwell.engine.workflow.workflowstore.SqlWorkflowStore.WorkflowStoreState.WorkflowStoreState
 import cromwell.engine.workflow.workflowstore.WorkflowStoreActor._
 import cromwell.engine.workflow.workflowstore.WorkflowStoreEngineActor._
@@ -100,29 +100,21 @@ final case class WorkflowStoreEngineActor private(store: WorkflowStore,
           }
           sndr ! nwm
         }
-      case AbortWorkflowCommand(id) =>
-        store.aborting(id) map { workflowStoreAbortResponse =>
-          log.info(s"Abort requested for workflow $id.")
-          workflowStoreAbortResponse
-        } map {
-          case WorkflowStoreAbortResponse.AbortedOnHoldOrSubmitted =>
-            pushCurrentStateToMetadataService(id, WorkflowAborted)
-            sndr ! WorkflowAbortedResponse(id)
-          case WorkflowStoreAbortResponse.AbortingHeartbeatTimestampIsEmpty =>
+      case RequestWorkflowAbortCommand(id) =>
+        store.requestAbort(id) map {
+          case true =>
+            sndr ! WorkflowAbortRequestSuccessResponse(id)
             pushCurrentStateToMetadataService(id, WorkflowAborting)
-            sndr ! WorkflowAbortingResponse(id, restarted = true)
-          case WorkflowStoreAbortResponse.AbortingHeartbeatTimestampNonEmpty =>
-            pushCurrentStateToMetadataService(id, WorkflowAborting)
-            sndr ! WorkflowAbortingResponse(id, restarted = false)
-          case WorkflowStoreAbortResponse.NotFound =>
-            sndr ! WorkflowAbortFailureResponse(id, new WorkflowNotFoundException(s"Couldn't abort $id because no workflow with that ID is in progress"))
+            log.info(s"Abort requested for workflow $id.")
+          case false =>
+            sndr ! WorkflowAbortRequestFailureResponse(id, new WorkflowNotFoundException(s"Couldn't abort $id because no workflow with that ID is in progress"))
         } recover {
           case t =>
             val message = s"Unable to update workflow store to abort $id"
             log.error(t, message)
             // A generic exception type like RuntimeException will produce a 500 at the API layer, which seems appropriate
             // given we don't know much about what went wrong here.  `t.getMessage` so the cause propagates to the client.
-            sndr ! WorkflowAbortFailureResponse(id, new RuntimeException(s"$message: ${t.getMessage}", t))
+            sndr ! WorkflowAbortRequestFailureResponse(id, new RuntimeException(s"$message: ${t.getMessage}", t))
         }
       case AbortAllRunningWorkflowsCommandAndStop =>
         store.abortAllRunning() map { _ =>
@@ -139,6 +131,12 @@ final case class WorkflowStoreEngineActor private(store: WorkflowStore,
             val message = s"Couldn't change the status to 'Submitted' from 'On Hold' for workflow $id"
             log.error(message)
             sndr ! WorkflowOnHoldToSubmittedFailure(id, t)
+        }
+      case FindWorkflowsWithAbortRequested(cromwellId) =>
+        store.findWorkflowIdsWithAbortRequested(cromwellId) map {
+          ids => sndr ! FindWorkflowIdsWithAbortRequestedSuccess(ids)
+        } recover {
+          case t => sndr ! FindWorkflowsIdsWithAbortRequestedFailure(t)
         }
       case oops =>
         log.error("Unexpected type of start work command: {}", oops.getClass.getSimpleName)

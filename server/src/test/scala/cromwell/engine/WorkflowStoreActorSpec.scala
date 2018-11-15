@@ -4,7 +4,7 @@ import akka.testkit._
 import cats.data.{NonEmptyList, NonEmptyVector}
 import com.typesafe.config.{Config, ConfigFactory}
 import cromwell.core._
-import cromwell.core.abort.{AbortResponse, WorkflowAbortFailureResponse, WorkflowAbortedResponse, WorkflowAbortingResponse}
+import cromwell.core.abort.{AbortResponse, WorkflowAbortRequestFailureResponse, WorkflowAbortRequestSuccessResponse}
 import cromwell.database.slick.EngineSlickDatabase
 import cromwell.engine.WorkflowStoreActorSpec._
 import cromwell.engine.workflow.WorkflowManagerActor.WorkflowNotFoundException
@@ -226,10 +226,10 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
       ))
       storeActor ! SubmitWorkflow(helloWorldSourceFiles.copy(workflowOnHold = true))
       val workflowId = expectMsgType[WorkflowSubmittedToStore](10.seconds).workflowId
-      storeActor ! AbortWorkflowCommand(workflowId)
+      storeActor ! RequestWorkflowAbortCommand(workflowId)
       val abortResponse = expectMsgType[AbortResponse](10.seconds)
-      abortResponse should be(a[WorkflowAbortedResponse])
-      abortResponse.asInstanceOf[WorkflowAbortedResponse].workflowId should be(workflowId)
+      abortResponse should be(a[WorkflowAbortRequestSuccessResponse])
+      abortResponse.asInstanceOf[WorkflowAbortRequestSuccessResponse].workflowId should be(workflowId)
     }
 
     "abort a submitted workflow with an empty heartbeat" in {
@@ -244,10 +244,10 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
         ))
         storeActor ! SubmitWorkflow(helloWorldSourceFiles)
         val workflowId = expectMsgType[WorkflowSubmittedToStore](10.seconds).workflowId
-        storeActor ! AbortWorkflowCommand(workflowId)
+        storeActor ! RequestWorkflowAbortCommand(workflowId)
         val abortResponse = expectMsgType[AbortResponse](10.seconds)
-        abortResponse should be(a[WorkflowAbortedResponse])
-        abortResponse.asInstanceOf[WorkflowAbortedResponse].workflowId should be(workflowId)
+        abortResponse should be(a[WorkflowAbortRequestSuccessResponse])
+        abortResponse.asInstanceOf[WorkflowAbortRequestSuccessResponse].workflowId should be(workflowId)
       }
     }
 
@@ -265,10 +265,10 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
         val workflowId = expectMsgType[WorkflowSubmittedToStore](10.seconds).workflowId
         coordinator ! WriteHeartbeats(NonEmptyVector.of(workflowId))
         expectMsg(10.seconds, 1)
-        storeActor ! AbortWorkflowCommand(workflowId)
+        storeActor ! RequestWorkflowAbortCommand(workflowId)
         val abortResponse = expectMsgType[AbortResponse](10.seconds)
-        abortResponse should be(a[WorkflowAbortedResponse])
-        abortResponse.asInstanceOf[WorkflowAbortedResponse].workflowId should be(workflowId)
+        abortResponse should be(a[WorkflowAbortRequestSuccessResponse])
+        abortResponse.asInstanceOf[WorkflowAbortRequestSuccessResponse].workflowId should be(workflowId)
       }
     }
 
@@ -294,11 +294,10 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
 
         Await.result(futureUpdate, 10.seconds.dilated) should be(1)
 
-        storeActor ! AbortWorkflowCommand(workflowId)
+        storeActor ! RequestWorkflowAbortCommand(workflowId)
         val abortResponse = expectMsgType[AbortResponse](10.seconds)
-        abortResponse should be(a[WorkflowAbortingResponse])
-        abortResponse.asInstanceOf[WorkflowAbortingResponse].workflowId should be(workflowId)
-        abortResponse.asInstanceOf[WorkflowAbortingResponse].restarted should be(true)
+        abortResponse should be(a[WorkflowAbortRequestSuccessResponse])
+        abortResponse.asInstanceOf[WorkflowAbortRequestSuccessResponse].workflowId should be(workflowId)
       }
     }
 
@@ -327,11 +326,10 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
         coordinator ! WriteHeartbeats(NonEmptyVector.of(workflowId))
 
         expectMsg(10.seconds, 1)
-        storeActor ! AbortWorkflowCommand(workflowId)
+        storeActor ! RequestWorkflowAbortCommand(workflowId)
         val abortResponse = expectMsgType[AbortResponse](10.seconds)
-        abortResponse should be(a[WorkflowAbortingResponse])
-        abortResponse.asInstanceOf[WorkflowAbortingResponse].workflowId should be(workflowId)
-        abortResponse.asInstanceOf[WorkflowAbortingResponse].restarted should be(false)
+        abortResponse should be(a[WorkflowAbortRequestSuccessResponse])
+        abortResponse.asInstanceOf[WorkflowAbortRequestSuccessResponse].workflowId should be(workflowId)
       }
     }
 
@@ -346,12 +344,12 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
         workflowHeartbeatConfig
       ))
       val notFoundWorkflowId = WorkflowId.fromString("7ff8dff3-bc80-4500-af3b-57dbe7a6ecbb")
-      storeActor ! AbortWorkflowCommand(notFoundWorkflowId)
+      storeActor ! RequestWorkflowAbortCommand(notFoundWorkflowId)
       val abortResponse = expectMsgType[AbortResponse](10 seconds)
-      abortResponse should be(a[WorkflowAbortFailureResponse])
-      abortResponse.asInstanceOf[WorkflowAbortFailureResponse].workflowId should be(notFoundWorkflowId)
-      abortResponse.asInstanceOf[WorkflowAbortFailureResponse].failure should be(a[WorkflowNotFoundException])
-      abortResponse.asInstanceOf[WorkflowAbortFailureResponse].failure.getMessage should be(
+      abortResponse should be(a[WorkflowAbortRequestFailureResponse])
+      abortResponse.asInstanceOf[WorkflowAbortRequestFailureResponse].workflowId should be(notFoundWorkflowId)
+      abortResponse.asInstanceOf[WorkflowAbortRequestFailureResponse].failure should be(a[WorkflowNotFoundException])
+      abortResponse.asInstanceOf[WorkflowAbortRequestFailureResponse].failure.getMessage should be(
         s"Couldn't abort 7ff8dff3-bc80-4500-af3b-57dbe7a6ecbb because no workflow with that ID is in progress")
     }
 

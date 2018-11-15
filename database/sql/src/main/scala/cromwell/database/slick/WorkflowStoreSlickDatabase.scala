@@ -6,6 +6,7 @@ import cats.instances.future._
 import cats.syntax.functor._
 import cromwell.database.sql.WorkflowStoreSqlDatabase
 import cromwell.database.sql.tables.WorkflowStoreEntry
+import mouse.all._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -46,6 +47,12 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
     } yield (deleted, restarted)
     
     runTransaction(action)
+  }
+
+  override def requestAbort(workflowId: String)
+                           (implicit ec: ExecutionContext): Future[Boolean] = {
+    // Return true if a workflow was found for which to request abort, otherwise false.
+    dataAccess.abortRequestedForId(workflowId).update(true) |> runTransaction map { _ == 1 }
   }
 
   override def addWorkflowStoreEntries(workflowStoreEntries: Iterable[WorkflowStoreEntry])
@@ -138,5 +145,9 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
     } yield updated
 
     runTransaction(action)
+  }
+
+  override def findWorkflowIdsWithAbortRequested(cromwellId: String)(implicit ec: ExecutionContext): Future[Iterable[String]] = {
+    dataAccess.findWorkflowsIdsWithAbortRequested(cromwellId).result |> runTransaction
   }
 }

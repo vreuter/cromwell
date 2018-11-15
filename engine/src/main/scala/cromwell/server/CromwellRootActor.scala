@@ -155,6 +155,14 @@ abstract class CromwellRootActor(gracefulShutdown: Boolean, abortJobsOnTerminate
       workflowHeartbeatConfig = workflowHeartbeatConfig),
     "WorkflowManagerActor")
 
+  lazy val abortRequestScanningActor = context.actorOf(
+    AbortRequestScanningActor.props(
+      workflowStoreActor = workflowStoreActor,
+      workflowManagerActor = workflowManagerActor,
+      workflowHeartbeatConfig = workflowHeartbeatConfig
+    )
+  )
+
   if (gracefulShutdown) {
     // If abortJobsOnTerminate is true, aborting all workflows will be handled by the graceful shutdown process
     CromwellShutdown.registerShutdownTasks(

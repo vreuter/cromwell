@@ -72,10 +72,22 @@ class InMemoryWorkflowStore extends WorkflowStore {
     }
   }
 
+  // Just remove the workflow if it exists in the store and return the appropriate Boolean.
+  override def requestAbort(id: WorkflowId)(implicit ec: ExecutionContext): Future[Boolean] = {
+    if (workflowStore.exists(_._1.id == id)) {
+      workflowStore = workflowStore filterNot { _._1.id == id }
+      Future.successful(true)
+    } else {
+      Future.successful(false)
+    }
+  }
+
   override def writeWorkflowHeartbeats(workflowIds: Set[WorkflowId])(implicit ec: ExecutionContext): Future[Int] =
     Future.successful(workflowIds.size)
 
   override def switchOnHoldToSubmitted(id: WorkflowId)(implicit ec: ExecutionContext): Future[Unit] = Future.successful(())
+
+  override def findWorkflowIdsWithAbortRequested(cromwellId: String)(implicit ec: ExecutionContext): Future[Iterable[WorkflowId]] = Future.successful(List.empty)
 }
 
 final case class WorkflowIdAndSources(id: WorkflowId, sources: WorkflowSourceFilesCollection)

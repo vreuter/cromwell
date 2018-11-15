@@ -50,6 +50,9 @@ ____    __    ____  ______   .______       __  ___  _______  __        ______   
                                     workflowStateForUpdate: String)
                                    (implicit ec: ExecutionContext): Future[(Int, Option[Boolean])]
 
+  def requestAbort(workflowId: String)
+                  (implicit ec: ExecutionContext): Future[Boolean]
+
   /**
     * Adds the requested WorkflowSourceFiles to the store.
     */
@@ -101,4 +104,6 @@ ____    __    ____  ______   .______       __  ___  _______  __        ______   
     */
   def updateWorkflowState(workflowExecutionUuid: String, fromWorkflowState: String, toWorkflowState: String)
                          (implicit ec: ExecutionContext): Future[Int]
+
+  def findWorkflowIdsWithAbortRequested(cromwellId: String)(implicit ec: ExecutionContext): Future[Iterable[String]]
 }

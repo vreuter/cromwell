@@ -10,7 +10,7 @@ import cats.syntax.functor._
 import common.util.VersionUtil
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core._
-import cromwell.core.abort.WorkflowAbortFailureResponse
+import cromwell.core.abort.WorkflowAbortRequestFailureResponse
 import cromwell.core.actor.BatchActor.QueueWeight
 import cromwell.core.path.Path
 import cromwell.core.retry.SimpleExponentialBackoff
@@ -120,7 +120,7 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
 
   whenUnhandled {
     // Handle failures for all failure responses generically.
-    case Event(r: WorkflowAbortFailureResponse, data) => failAndFinish(r.failure, data)
+    case Event(r: WorkflowAbortRequestFailureResponse, data) => failAndFinish(r.failure, data)
     case Event(Failure(e), data) => failAndFinish(e, data)
     case Event(Status.Failure(e), data) => failAndFinish(e, data)
     case Event(FailedMetadataResponse(e), data) => failAndFinish(e, data)

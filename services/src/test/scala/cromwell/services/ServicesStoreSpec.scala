@@ -312,6 +312,7 @@ class ServicesStoreSpec extends FlatSpec with Matchers with ScalaFutures with St
         workflowState = "Submitted",
         cromwellId = None,
         heartbeatTimestamp = None,
+        abortRequested = false,
         submissionTime = OffsetDateTime.now.toSystemTimestamp,
         importsZip = Option(emptyBlob),
         customLabels = clob)
@@ -389,6 +390,7 @@ class ServicesStoreSpec extends FlatSpec with Matchers with ScalaFutures with St
         workflowState = submittedWorkflowState,
         cromwellId = None,
         heartbeatTimestamp = None,
+        abortRequested = false,
         submissionTime = OffsetDateTime.now.toSystemTimestamp,
         importsZip = Option(Array.empty[Byte]).toBlobOption,
         customLabels = clob)
@@ -406,6 +408,7 @@ class ServicesStoreSpec extends FlatSpec with Matchers with ScalaFutures with St
         workflowState = submittedWorkflowState,
         cromwellId = None,
         heartbeatTimestamp = None,
+        abortRequested = false,
         submissionTime = OffsetDateTime.now.toSystemTimestamp,
         importsZip = None,
         customLabels = clob)
@@ -424,6 +427,7 @@ class ServicesStoreSpec extends FlatSpec with Matchers with ScalaFutures with St
         workflowState = submittedWorkflowState,
         cromwellId = None,
         heartbeatTimestamp = None,
+        abortRequested = false,
         submissionTime = OffsetDateTime.now.toSystemTimestamp,
         importsZip = Option(Array(aByte)).toBlobOption,
         customLabels = clob)

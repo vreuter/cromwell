@@ -41,8 +41,10 @@ trait WorkflowStoreEntryComponent {
 
     def heartbeatTimestamp = column[Option[Timestamp]]("HEARTBEAT_TIMESTAMP")
 
+    def abortRequested = column[Boolean]("ABORT_REQUESTED")
+
     override def * = (workflowExecutionUuid, workflowDefinition, workflowUrl, workflowRoot, workflowType, workflowTypeVersion, workflowInputs, workflowOptions, workflowState,
-      submissionTime, importsZip, customLabels, cromwellId, heartbeatTimestamp, workflowStoreEntryId.?) <> ((WorkflowStoreEntry.apply _).tupled, WorkflowStoreEntry.unapply)
+      submissionTime, importsZip, customLabels, cromwellId, heartbeatTimestamp, abortRequested, workflowStoreEntryId.?) <> ((WorkflowStoreEntry.apply _).tupled, WorkflowStoreEntry.unapply)
 
     def ucWorkflowStoreEntryWeu = index("UC_WORKFLOW_STORE_ENTRY_WEU", workflowExecutionUuid, unique = true)
 
@@ -146,6 +148,13 @@ trait WorkflowStoreEntryComponent {
     } yield workflowStoreEntry.workflowState
   )
 
+  val abortRequestedForId = Compiled(
+    (workflowId: Rep[String]) => for {
+      workflowStoreEntry <- workflowStoreEntries
+      if workflowStoreEntry.workflowExecutionUuid === workflowId
+    } yield workflowStoreEntry.abortRequested
+  )
+
   /**
     * Useful for updating a given workflow to a 'Submitted' state when it's currently 'On Hold'
     */
@@ -184,5 +193,12 @@ trait WorkflowStoreEntryComponent {
       workflowStoreEntry <- workflowStoreEntries
       if workflowStoreEntry.workflowExecutionUuid === workflowId
     } yield workflowStoreEntry.heartbeatTimestamp.isEmpty
+  )
+
+  val findWorkflowsIdsWithAbortRequested = Compiled(
+    (cromwellId: Rep[String]) => for {
+      workflowStoreEntry <- workflowStoreEntries
+      if workflowStoreEntry.abortRequested && workflowStoreEntry.cromwellId === cromwellId
+    } yield workflowStoreEntry.workflowExecutionUuid
   )
 }

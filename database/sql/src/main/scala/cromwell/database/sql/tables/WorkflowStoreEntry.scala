@@ -18,5 +18,6 @@ case class WorkflowStoreEntry
   customLabels: Clob,
   cromwellId: Option[String],
   heartbeatTimestamp: Option[Timestamp],
+  abortRequested: Boolean,
   workflowStoreEntryId: Option[Int] = None
 )

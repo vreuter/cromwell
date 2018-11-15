@@ -46,6 +46,10 @@ object WorkflowManagerActor {
   case object AbortAllWorkflowsCommand extends WorkflowManagerActorCommand
   final case class SubscribeToWorkflowCommand(id: WorkflowId) extends WorkflowManagerActorCommand
   case object EngineStatsCommand extends WorkflowManagerActorCommand
+  case class QueryRootWorkflowActorsRequest(ids: Set[WorkflowId]) extends WorkflowManagerActorCommand
+
+  sealed trait WorkflowManagerActorResponse
+  case class QueryRootWorkflowActorsResponse(actors: Map[WorkflowId, Option[ActorRef]], request: QueryRootWorkflowActorsRequest)
 
   def props(config: Config,
             workflowStore: ActorRef,
@@ -243,6 +247,10 @@ class WorkflowManagerActor(params: WorkflowManagerActorParams)
   when (Done) { FSM.NullFunction }
 
   whenUnhandled {
+    case Event(query @ QueryRootWorkflowActorsRequest(ids), stateData) =>
+      val idsToActorRefs = ids map { id => id -> stateData.workflows.get(id) }
+      sender ! QueryRootWorkflowActorsResponse(idsToActorRefs.toMap, query)
+      stay()
     case Event(PreventNewWorkflowsFromStarting, _) =>
       timers.cancel(RetrieveNewWorkflowsKey)
       sender() ! akka.Done

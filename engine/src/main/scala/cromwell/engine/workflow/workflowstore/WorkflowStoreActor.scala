@@ -49,11 +49,16 @@ final case class WorkflowStoreActor private(
 object WorkflowStoreActor {
   sealed trait WorkflowStoreActorEngineCommand
   final case class FetchRunnableWorkflows(n: Int) extends WorkflowStoreActorEngineCommand
-  final case class AbortWorkflowCommand(id: WorkflowId) extends WorkflowStoreActorEngineCommand
+  final case class RequestWorkflowAbortCommand(id: WorkflowId) extends WorkflowStoreActorEngineCommand
   final case class WorkflowOnHoldToSubmittedCommand(id: WorkflowId) extends WorkflowStoreActorEngineCommand
   case object InitializerCommand extends WorkflowStoreActorEngineCommand
   case object WorkDone extends WorkflowStoreActorEngineCommand
   case object AbortAllRunningWorkflowsCommandAndStop extends WorkflowStoreActorEngineCommand
+  case class FindWorkflowsWithAbortRequested(cromwellId: String) extends WorkflowStoreActorEngineCommand
+
+  sealed trait WorkflowStoreActorEngineResponse
+  case class FindWorkflowIdsWithAbortRequestedSuccess(ids: Iterable[WorkflowId]) extends WorkflowStoreActorEngineResponse
+  case class FindWorkflowsIdsWithAbortRequestedFailure(t: Throwable) extends WorkflowStoreActorEngineResponse
 
   sealed trait WorkflowStoreActorSubmitCommand
   final case class SubmitWorkflow(source: WorkflowSourceFilesCollection) extends WorkflowStoreActorSubmitCommand

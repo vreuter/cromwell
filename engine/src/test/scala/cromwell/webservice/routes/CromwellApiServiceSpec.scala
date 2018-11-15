@@ -7,10 +7,10 @@ import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.stream.ActorMaterializer
 import common.util.VersionUtil
 import cromwell.core._
-import cromwell.core.abort.{WorkflowAbortFailureResponse, WorkflowAbortingResponse}
+import cromwell.core.abort.{WorkflowAbortRequestFailureResponse, WorkflowAbortRequestSuccessResponse}
 import cromwell.engine.workflow.WorkflowManagerActor
 import cromwell.engine.workflow.WorkflowManagerActor.WorkflowNotFoundException
-import cromwell.engine.workflow.workflowstore.WorkflowStoreActor.{AbortWorkflowCommand, BatchSubmitWorkflows, SubmitWorkflow, WorkflowOnHoldToSubmittedCommand}
+import cromwell.engine.workflow.workflowstore.WorkflowStoreActor.{BatchSubmitWorkflows, RequestWorkflowAbortCommand, SubmitWorkflow, WorkflowOnHoldToSubmittedCommand}
 import cromwell.engine.workflow.workflowstore.WorkflowStoreEngineActor.{WorkflowOnHoldToSubmittedFailure, WorkflowOnHoldToSubmittedSuccess}
 import cromwell.engine.workflow.workflowstore.WorkflowStoreSubmitActor.{WorkflowSubmittedToStore, WorkflowsBatchSubmittedToStore}
 import cromwell.services.healthmonitor.HealthMonitorServiceActor.{GetCurrentStatus, StatusCheckResponse, SubsystemStatus}
@@ -510,12 +510,12 @@ object CromwellApiServiceSpec {
       case BatchSubmitWorkflows(sources) =>
         val response = WorkflowsBatchSubmittedToStore(sources map { _ => ExistingWorkflowId }, WorkflowSubmitted)
         sender ! response
-      case AbortWorkflowCommand(id) =>
+      case RequestWorkflowAbortCommand(id) =>
         val message = id match {
-          case ExistingWorkflowId => WorkflowAbortingResponse(id, restarted = false)
-          case UnrecognizedWorkflowId => WorkflowAbortFailureResponse(id, new WorkflowNotFoundException(s"Couldn't abort $id because no workflow with that ID is in progress"))
+          case ExistingWorkflowId => WorkflowAbortRequestSuccessResponse(id)
+          case UnrecognizedWorkflowId => WorkflowAbortRequestFailureResponse(id, new WorkflowNotFoundException(s"Couldn't abort $id because no workflow with that ID is in progress"))
           case AbortedWorkflowId =>
-            WorkflowAbortFailureResponse(id, new IllegalStateException(s"Workflow ID '$id' is in terminal state 'Aborted' and cannot be aborted."))
+            WorkflowAbortRequestFailureResponse(id, new IllegalStateException(s"Workflow ID '$id' is in terminal state 'Aborted' and cannot be aborted."))
           case WorkflowId(_) => throw new Exception("Something untoward happened")
         }
         sender ! message

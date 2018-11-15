@@ -17,11 +17,11 @@ import cats.data.Validated.{Invalid, Valid}
 import com.typesafe.config.ConfigFactory
 import common.exception.AggregatedMessageException
 import common.util.VersionUtil
-import cromwell.core.abort.{AbortResponse, WorkflowAbortFailureResponse, WorkflowAbortedResponse, WorkflowAbortingResponse}
+import cromwell.core.abort._
 import cromwell.core.{path => _, _}
 import cromwell.engine.backend.BackendConfiguration
 import cromwell.engine.instrumentation.HttpInstrumentation
-import cromwell.engine.workflow.WorkflowManagerActor.{AbortWorkflowCommand, WorkflowNotFoundException}
+import cromwell.engine.workflow.WorkflowManagerActor.WorkflowNotFoundException
 import cromwell.engine.workflow.lifecycle.execution.callcaching.CallCacheDiffActor.{BuiltCallCacheDiffResponse, CachedCallNotFoundException, CallCacheDiffActorResponse, FailedCallCacheDiffResponse}
 import cromwell.engine.workflow.lifecycle.execution.callcaching.{CallCacheDiffActor, CallCacheDiffQueryParameter}
 import cromwell.engine.workflow.workflowstore.SqlWorkflowStore.NotInOnHoldStateException
@@ -111,22 +111,18 @@ trait CromwellApiService extends HttpInstrumentation with MetadataRouteSupport {
       post {
         instrumentRequest {
           def sendAbort(workflowId: WorkflowId): Route = {
-            val response = workflowStoreActor.ask(WorkflowStoreActor.AbortWorkflowCommand(workflowId)).mapTo[AbortResponse]
-
+            val response = workflowStoreActor.ask(WorkflowStoreActor.RequestWorkflowAbortCommand(workflowId)).mapTo[AbortResponse]
             onComplete(response) {
-              case Success(WorkflowAbortedResponse(id)) =>
-                complete(ToResponseMarshallable(WorkflowAbortResponse(id.toString, WorkflowAborted.toString)))
-              case Success(WorkflowAbortingResponse(id, restarted)) =>
-                workflowManagerActor ! AbortWorkflowCommand(id, restarted)
+              case Success(WorkflowAbortRequestSuccessResponse(id)) =>
                 complete(ToResponseMarshallable(WorkflowAbortResponse(id.toString, WorkflowAborting.toString)))
-              case Success(WorkflowAbortFailureResponse(_, e: IllegalStateException)) =>
+              case Success(WorkflowAbortRequestFailureResponse(_, e: IllegalStateException)) =>
                 /*
                   Note that this is currently impossible to reach but was left as-is during the transition to akka http.
                   When aborts get fixed, this should be looked at.
                 */
                 e.errorRequest(StatusCodes.Forbidden)
-              case Success(WorkflowAbortFailureResponse(_, e: WorkflowNotFoundException)) => e.errorRequest(StatusCodes.NotFound)
-              case Success(WorkflowAbortFailureResponse(_, e)) => e.errorRequest(StatusCodes.InternalServerError)
+              case Success(WorkflowAbortRequestFailureResponse(_, e: WorkflowNotFoundException)) => e.errorRequest(StatusCodes.NotFound)
+              case Success(WorkflowAbortRequestFailureResponse(_, e)) => e.errorRequest(StatusCodes.InternalServerError)
               case Failure(_: AskTimeoutException) if CromwellShutdown.shutdownInProgress() => serviceShuttingDownResponse
               case Failure(e: TimeoutException) => e.failRequest(StatusCodes.ServiceUnavailable)
               case Failure(e) => e.errorRequest(StatusCodes.InternalServerError)
