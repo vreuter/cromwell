@@ -36,7 +36,6 @@ class SubWorkflowStoreSpec extends CromwellTestKitWordSpec with CoordinatedWorkf
 
       lazy val workflowStore = SqlWorkflowStore(EngineServicesStore.engineDatabaseInterface)
       val workflowHeartbeatConfig = WorkflowHeartbeatConfig(ConfigFactory.load())
-      val writer: WorkflowStore => CoordinatedWorkflowStoreWriter = buildCoordinatedWriter(system)
       val workflowStoreService = system.actorOf(WorkflowStoreActor.props(workflowStore, workflowStore |> writer, TestProbe().ref, abortAllJobsOnTerminate = false, workflowHeartbeatConfig))
 
       val parentWorkflowId = WorkflowId.randomId()

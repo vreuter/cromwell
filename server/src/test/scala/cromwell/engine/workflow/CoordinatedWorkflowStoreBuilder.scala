@@ -1,11 +1,11 @@
 package cromwell.engine.workflow
 
-import akka.actor.ActorSystem
+import akka.testkit.TestKit
 import cromwell.engine.workflow.workflowstore.{CoordinatedWorkflowStoreWriter, WorkflowStore, WorkflowStoreCoordinatedWriteActor}
 
-trait CoordinatedWorkflowStoreBuilder {
-  def buildCoordinatedWriter(system: ActorSystem)(store: WorkflowStore): CoordinatedWorkflowStoreWriter = {
-    val coordinatedWriteActor = system.actorOf(WorkflowStoreCoordinatedWriteActor.props(store))
+trait CoordinatedWorkflowStoreBuilder { testKit: TestKit =>
+  def writer(store: WorkflowStore): CoordinatedWorkflowStoreWriter = {
+    val coordinatedWriteActor = testKit.system.actorOf(WorkflowStoreCoordinatedWriteActor.props(store))
     CoordinatedWorkflowStoreWriter(coordinatedWriteActor)
   }
 }

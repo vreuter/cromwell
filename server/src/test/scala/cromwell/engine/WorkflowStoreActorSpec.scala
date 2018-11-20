@@ -23,6 +23,7 @@ import cromwell.services.metadata.impl.ReadMetadataActor
 import cromwell.util.EncryptionSpec
 import cromwell.util.SampleWdl.HelloWorld
 import cromwell.{CromwellTestKitSpec, CromwellTestKitWordSpec}
+import mouse.all._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfter, Matchers}
 import org.specs2.mock.Mockito
@@ -64,9 +65,6 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with CoordinatedWor
   }
 
   private val workflowHeartbeatConfig = WorkflowHeartbeatConfig(rootConfig)
-
-  val writer: WorkflowStore => CoordinatedWorkflowStoreWriter = buildCoordinatedWriter(system)
-  import mouse.all._
 
   "The WorkflowStoreActor" should {
     "return an ID for a submitted workflow" in {
