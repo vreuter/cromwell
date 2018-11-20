@@ -9,7 +9,7 @@ import cromwell.util.GracefulShutdownHelper.ShutdownCommand
 
 final case class WorkflowStoreActor private(
                                              workflowStore: WorkflowStore,
-                                             workflowStoreCoordinatedWriteActor: ActorRef,
+                                             workflowStoreWriter: WorkflowStoreWriter,
                                              serviceRegistryActor: ActorRef,
                                              abortAllJobsOnTerminate: Boolean,
                                              workflowHeartbeatConfig: WorkflowHeartbeatConfig)
@@ -25,7 +25,7 @@ final case class WorkflowStoreActor private(
   lazy val workflowStoreEngineActor: ActorRef = context.actorOf(
     WorkflowStoreEngineActor.props(
       workflowStore = workflowStore,
-      workflowStoreCoordinatedWriteActor = workflowStoreCoordinatedWriteActor,
+      workflowStoreWriter = workflowStoreWriter,
       serviceRegistryActor = serviceRegistryActor,
       abortAllJobsOnTerminate = abortAllJobsOnTerminate,
       workflowHeartbeatConfig = workflowHeartbeatConfig),
@@ -33,7 +33,7 @@ final case class WorkflowStoreActor private(
 
   lazy val workflowStoreHeartbeatWriteActor: ActorRef = context.actorOf(
     WorkflowStoreHeartbeatWriteActor.props(
-      workflowStoreCoordindatedWriteActor = workflowStoreCoordinatedWriteActor,
+      workflowStoreWriter = workflowStoreWriter,
       workflowHeartbeatConfig = workflowHeartbeatConfig,
       serviceRegistryActor = serviceRegistryActor),
     "WorkflowStoreHeartbeatWriteActor")
@@ -68,14 +68,14 @@ object WorkflowStoreActor {
 
   def props(
              workflowStoreDatabase: WorkflowStore,
-             workflowStoreCoordinatedWriteActor: ActorRef,
+             workflowStoreWriter: WorkflowStoreWriter,
              serviceRegistryActor: ActorRef,
              abortAllJobsOnTerminate: Boolean,
              workflowHeartbeatConfig: WorkflowHeartbeatConfig
       ) = {
     Props(WorkflowStoreActor(
       workflowStore = workflowStoreDatabase,
-      workflowStoreCoordinatedWriteActor = workflowStoreCoordinatedWriteActor,
+      workflowStoreWriter = workflowStoreWriter,
       serviceRegistryActor = serviceRegistryActor,
       abortAllJobsOnTerminate = abortAllJobsOnTerminate,
       workflowHeartbeatConfig = workflowHeartbeatConfig)).withDispatcher(EngineDispatcher)
