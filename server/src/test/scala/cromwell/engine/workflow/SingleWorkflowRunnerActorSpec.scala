@@ -61,7 +61,7 @@ object SingleWorkflowRunnerActorSpec {
 abstract class SingleWorkflowRunnerActorSpec extends CromwellTestKitWordSpec with CoordinatedWorkflowStoreBuilder with Mockito {
   private val workflowHeartbeatConfig = WorkflowHeartbeatConfig(ConfigFactory.load())
   val store = new InMemoryWorkflowStore
-  val coordinator = system.actorOf(WorkflowStoreCoordinatedWriteActor.props(store))
+  val coordinator = system.actorOf(CoordinatedWorkflowStoreAccessActor.props(store))
   private val workflowStore =
     system.actorOf(WorkflowStoreActor.props(store, store |> writer, dummyServiceRegistryActor, abortAllJobsOnTerminate = false, workflowHeartbeatConfig))
   private val serviceRegistry = TestProbe().ref

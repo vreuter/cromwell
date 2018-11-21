@@ -77,7 +77,7 @@ abstract class CromwellRootActor(gracefulShutdown: Boolean, abortJobsOnTerminate
     concurrentWrites match {
       case Some(true) => UncoordinatedWorkflowStoreWriter(workflowStore)
       case _ =>
-        val workflowStoreCoordinatedWriteActor: ActorRef = context.actorOf(WorkflowStoreCoordinatedWriteActor.props(workflowStore))
+        val workflowStoreCoordinatedWriteActor: ActorRef = context.actorOf(CoordinatedWorkflowStoreAccessActor.props(workflowStore))
         CoordinatedWorkflowStoreWriter(workflowStoreCoordinatedWriteActor)
     }
   }

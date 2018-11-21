@@ -11,7 +11,7 @@ import cromwell.engine.workflow.CoordinatedWorkflowStoreBuilder
 import cromwell.engine.workflow.WorkflowManagerActor.WorkflowNotFoundException
 import cromwell.engine.workflow.workflowstore.SqlWorkflowStore.WorkflowStoreState
 import cromwell.engine.workflow.workflowstore.WorkflowStoreActor._
-import cromwell.engine.workflow.workflowstore.WorkflowStoreCoordinatedWriteActor.WriteHeartbeats
+import cromwell.engine.workflow.workflowstore.CoordinatedWorkflowStoreAccessActor.WriteHeartbeats
 import cromwell.engine.workflow.workflowstore.WorkflowStoreEngineActor.{NewWorkflowsToStart, NoNewWorkflowsToStart}
 import cromwell.engine.workflow.workflowstore.WorkflowStoreSubmitActor.{WorkflowSubmittedToStore, WorkflowsBatchSubmittedToStore}
 import cromwell.engine.workflow.workflowstore._

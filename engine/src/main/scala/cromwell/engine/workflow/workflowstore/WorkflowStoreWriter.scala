@@ -34,14 +34,14 @@ case class UncoordinatedWorkflowStoreWriter(store: WorkflowStore) extends Workfl
 case class CoordinatedWorkflowStoreWriter(actor: ActorRef) extends WorkflowStoreWriter {
   override def writeWorkflowHeartbeats(workflowIds: NonEmptyVector[WorkflowId])
                                       (implicit ec: ExecutionContext): Future[Int] = {
-    implicit val timeout = Timeout(WorkflowStoreCoordinatedWriteActor.Timeout)
-    actor.ask(WorkflowStoreCoordinatedWriteActor.WriteHeartbeats(workflowIds)).mapTo[Int]
+    implicit val timeout = Timeout(CoordinatedWorkflowStoreAccessActor.Timeout)
+    actor.ask(CoordinatedWorkflowStoreAccessActor.WriteHeartbeats(workflowIds)).mapTo[Int]
   }
 
   override def fetchStartableWorkflows(maxWorkflows: Int, cromwellId: String, heartbeatTtl: FiniteDuration)
                                       (implicit ec: ExecutionContext): Future[List[WorkflowToStart]] = {
-    implicit val timeout = Timeout(WorkflowStoreCoordinatedWriteActor.Timeout)
-    val message = WorkflowStoreCoordinatedWriteActor.FetchStartableWorkflows(maxWorkflows, cromwellId, heartbeatTtl)
+    implicit val timeout = Timeout(CoordinatedWorkflowStoreAccessActor.Timeout)
+    val message = CoordinatedWorkflowStoreAccessActor.FetchStartableWorkflows(maxWorkflows, cromwellId, heartbeatTtl)
     actor.ask(message).mapTo[List[WorkflowToStart]]
   }
 }
