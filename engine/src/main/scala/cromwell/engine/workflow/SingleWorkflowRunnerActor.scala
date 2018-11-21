@@ -147,8 +147,10 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
   }
 
   private def schedulePollRequest(): Unit = {
+    val delay = backoff.backoffMillis.millis
+    log.info(s"$Tag schedulePollRequest invoked with delay $delay")
     // -Ywarn-value-discard should stash Cancellable to cancel
-    context.system.scheduler.scheduleOnce(backoff.backoffMillis.millis, self, IssuePollRequest)
+    context.system.scheduler.scheduleOnce(delay, self, IssuePollRequest)
     ()
   }
 
