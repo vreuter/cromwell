@@ -54,7 +54,10 @@ object SingleWorkflowRunnerActorSpec {
                                       metadataOutputPath: Option[Path])(implicit materializer: ActorMaterializer)
     extends SingleWorkflowRunnerActor(source, metadataOutputPath, false, false) {
     override lazy val serviceRegistryActor = CromwellTestKitSpec.ServiceRegistryActorInstance
-    override private [workflow] def done() = context.stop(self)
+    override private [workflow] def done() = {
+      log.info("done() has been invoked on TestSingleWorkflowRunnerActor")
+      context.stop(self)
+    }
   }
 }
 
