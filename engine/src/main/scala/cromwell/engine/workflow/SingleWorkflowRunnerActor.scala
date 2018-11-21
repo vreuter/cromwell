@@ -128,7 +128,7 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
       // ignore uninteresting current state and transition messages
       stay()
     case Event(m, _) =>
-      log.warning(s"$Tag: received unexpected message: $m in state $stateName")
+      log.warning(s"$Tag: received unexpected message: ${m.getClass.getCanonicalName} in state $stateName")
       stay()
   }
 
