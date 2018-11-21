@@ -72,6 +72,7 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
 
   when (RunningWorkflow) {
     case Event(IssuePollRequest, RunningSwraData(_, id)) =>
+      log.info(s"$Tag issuing a poll request")
       requestStatus(id)
       stay()
     case Event(BuiltMetadataResponse(jsObject: JsObject), RunningSwraData(_, _)) if !jsObject.state.isTerminal =>
@@ -133,7 +134,7 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
       // an `akka.Done` message, so don't act surprised when that happens.
       stay()
     case Event(m, _) =>
-      log.warning(s"$Tag: received unexpected message: ${m.getClass.getCanonicalName} in state $stateName")
+      log.warning(s"$Tag: received unexpected message: $m of type ${m.getClass.getCanonicalName} in state $stateName")
       stay()
   }
 
