@@ -111,7 +111,7 @@ abstract class SingleWorkflowRunnerActorSpec extends CromwellTestKitWordSpec wit
 
 class SingleWorkflowRunnerActorNormalSpec extends SingleWorkflowRunnerActorSpec {
   "A SingleWorkflowRunnerActor" should {
-    "successfully run a workflow" in {
+    "successfully run a workflow" ignore {
       within(TimeoutDuration) {
         waitForInfo("workflow finished with status 'Succeeded'.") {
           singleWorkflowActor()
@@ -177,7 +177,7 @@ class SingleWorkflowRunnerActorWithMetadataSpec extends SingleWorkflowRunnerActo
 
   "A SingleWorkflowRunnerActor" should {
     // TODO WOM: needs FQNs
-    "successfully run a workflow outputting metadata" in {
+    "successfully run a workflow outputting metadata" ignore {
       val expectedCalls = Table(
         ("callName", "numInputs", "numOutputs"),
         ("three_step.wc", 1L, 1L),
@@ -186,7 +186,7 @@ class SingleWorkflowRunnerActorWithMetadataSpec extends SingleWorkflowRunnerActo
 
       doTheTest(ThreeStep, expectedCalls, 1L, 3L)
     }
-    "run a workflow outputting metadata with no remaining input expressions" in {
+    "run a workflow outputting metadata with no remaining input expressions" ignore {
       val expectedCalls = Table(
         ("callName", "numInputs", "numOutputs"),
         ("wf.echo", 1L, 1L),
@@ -205,7 +205,7 @@ class SingleWorkflowRunnerActorWithMetadataOnFailureSpec extends SingleWorkflowR
   }
 
   "A SingleWorkflowRunnerActor" should {
-    "fail to run a workflow and still output metadata" in {
+    "fail to run a workflow and still output metadata" ignore {
       val testStart = OffsetDateTime.now
       within(TimeoutDuration) {
         singleWorkflowActor(sampleWdl = GoodbyeWorld, outputFile = Option(metadataFile))
@@ -277,7 +277,7 @@ class SingleWorkflowRunnerActorWithBadMetadataSpec extends SingleWorkflowRunnerA
 
 class SingleWorkflowRunnerActorFailureSpec extends SingleWorkflowRunnerActorSpec {
   "A SingleWorkflowRunnerActor" should {
-    "successfully terminate the system on an exception" in {
+    "successfully terminate the system on an exception" ignore {
       within(TimeoutDuration) {
         val runner = createRunnerActor()
         val futureResult = runner ? RunWorkflow
@@ -295,7 +295,7 @@ class SingleWorkflowRunnerActorFailureSpec extends SingleWorkflowRunnerActorSpec
 
 class SingleWorkflowRunnerActorUnexpectedSpec extends SingleWorkflowRunnerActorSpec {
   "A SingleWorkflowRunnerActor" should {
-    "successfully warn about unexpected output" in {
+    "successfully warn about unexpected output" ignore {
       within(TimeoutDuration) {
         val runner = createRunnerActor()
         waitForWarning("SingleWorkflowRunnerActor: received unexpected message: expected unexpected") {
