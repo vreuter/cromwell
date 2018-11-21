@@ -27,6 +27,7 @@ import spray.json._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util._
 import scala.util.control.NoStackTrace
 
@@ -64,7 +65,6 @@ object SingleWorkflowRunnerActorSpec {
 abstract class SingleWorkflowRunnerActorSpec extends CromwellTestKitWordSpec with CoordinatedWorkflowStoreBuilder with Mockito {
   private val workflowHeartbeatConfig = WorkflowHeartbeatConfig(ConfigFactory.load())
   val store = new InMemoryWorkflowStore
-  val coordinator = system.actorOf(CoordinatedWorkflowStoreAccessActor.props(store))
   private val workflowStore =
     system.actorOf(WorkflowStoreActor.props(store, store |> writer, dummyServiceRegistryActor, abortAllJobsOnTerminate = false, workflowHeartbeatConfig))
   private val serviceRegistry = TestProbe().ref
@@ -260,8 +260,13 @@ class SingleWorkflowRunnerActorWithBadMetadataSpec extends SingleWorkflowRunnerA
     "successfully run a workflow requesting a bad metadata path" in {
       within(TimeoutDuration) {
         val runner = createRunnerActor(outputFile = Option(metadataDir))
+        val probe = new TestProbe(system)
+        probe watch runner
+
         waitForErrorWithException(s"Specified metadata path is a directory, should be a file: $metadataDir") {
           val futureResult = runner.ask(RunWorkflow)(30.seconds, implicitly)
+          probe expectTerminated(runner, 30 seconds)
+          println("Runner has shed its mortal coil")
           Await.ready(futureResult, Duration.Inf)
           futureResult.value.get match {
             case Success(_) =>
