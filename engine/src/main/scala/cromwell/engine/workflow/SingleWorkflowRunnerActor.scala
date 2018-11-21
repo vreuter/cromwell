@@ -75,6 +75,7 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
       requestStatus(id)
       stay()
     case Event(BuiltMetadataResponse(jsObject: JsObject), RunningSwraData(_, _)) if !jsObject.state.isTerminal =>
+      log.info(s"$Tag workflow status non-terminal: ${jsObject.state}")
       schedulePollRequest()
       stay()
     case Event(BuiltMetadataResponse(jsObject: JsObject), RunningSwraData(replyTo, id)) if jsObject.state == WorkflowSucceeded =>
@@ -124,8 +125,12 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
     case Event(Failure(e), data) => failAndFinish(e, data)
     case Event(Status.Failure(e), data) => failAndFinish(e, data)
     case Event(FailedMetadataResponse(e), data) => failAndFinish(e, data)
-    case Event((CurrentState(_, _) | Transition(_, _, _)), _) =>
+    case Event(CurrentState(_, _) | Transition(_, _, _), _) =>
       // ignore uninteresting current state and transition messages
+      stay()
+    case Event(akka.Done, _) =>
+      // This actor sends the WMA a `PreventNewWorkflowsFromStarting` message to which the WMA will respond with
+      // an `akka.Done` message, so don't act surprised when that happens.
       stay()
     case Event(m, _) =>
       log.warning(s"$Tag: received unexpected message: ${m.getClass.getCanonicalName} in state $stateName")
@@ -156,13 +161,13 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
 
   private def issueSuccessReply(replyTo: ActorRef): State = {
     replyTo.tell(msg = (), sender = self) // Because replyTo ! () is the parameterless call replyTo.!()
-    done
+    done()
     stay()
   }
 
   private def issueFailureReply(replyTo: ActorRef, e: Throwable): State = {
     replyTo ! Status.Failure(e)
-    done
+    done()
     stay()
   }
   
@@ -182,7 +187,7 @@ class SingleWorkflowRunnerActor(source: WorkflowSourceFilesCollection,
     data match {
       case EmptySwraData =>
         log.error(e, "Cannot issue response. Need a 'replyTo' address to issue the exception response")
-        done
+        done()
         stay()
       case SubmittedSwraData(replyTo) =>
         issueFailureReply(replyTo, e)
