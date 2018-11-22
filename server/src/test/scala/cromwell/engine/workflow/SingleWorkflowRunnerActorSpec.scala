@@ -5,7 +5,7 @@ import java.time.OffsetDateTime
 import akka.actor._
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
-import akka.testkit.TestProbe
+import akka.testkit._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import cromwell.CromwellTestKitSpec._
@@ -264,7 +264,7 @@ class SingleWorkflowRunnerActorWithBadMetadataSpec extends SingleWorkflowRunnerA
         probe watch runner
 
         waitForErrorWithException(s"Specified metadata path is a directory, should be a file: $metadataDir") {
-          val futureResult = runner.ask(RunWorkflow)(30.seconds, implicitly)
+          val futureResult = runner.ask(RunWorkflow)(30.seconds.dilated, implicitly)
           probe expectTerminated(runner, 30 seconds)
           println("Runner has shed its mortal coil")
           Await.ready(futureResult, Duration.Inf)
