@@ -8,7 +8,7 @@ import cromwell.database.sql.SqlDatabase
 import net.ceedubs.ficus.Ficus._
 import org.slf4j.LoggerFactory
 import slick.basic.DatabaseConfig
-import slick.jdbc.{JdbcCapabilities, JdbcProfile}
+import slick.jdbc.{JdbcCapabilities, JdbcProfile, TransactionIsolation}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -100,8 +100,8 @@ abstract class SlickDatabase(override val originalDatabaseConfig: Config) extend
     database.close()
   }
 
-  protected[this] def runTransaction[R](action: DBIO[R]): Future[R] = {
-    database.run(action.transactionally)
+  protected[this] def runTransaction[R](action: DBIO[R], isolationLevel: TransactionIsolation = TransactionIsolation.RepeatableRead): Future[R] = {
+    database.run(action.transactionally.withTransactionIsolation(isolationLevel))
   }
 
   /*

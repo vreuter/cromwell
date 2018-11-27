@@ -6,7 +6,7 @@ import cats.instances.future._
 import cats.syntax.functor._
 import cromwell.database.sql.WorkflowStoreSqlDatabase
 import cromwell.database.sql.tables.WorkflowStoreEntry
-import mouse.all._
+import slick.jdbc.TransactionIsolation
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -44,8 +44,8 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
           case _ => assertUpdateCount("deleteOrUpdateWorkflowToState", deleted, 1)
         }
     } yield (deleted, updated)
-    
-    runTransaction(action) map { case (deleted, updated) => if (deleted == 0 && updated == 0) None else Option(deleted > 0) }
+
+    runTransaction(action, TransactionIsolation.ReadCommitted) map { case (deleted, updated) => if (deleted == 0 && updated == 0) None else Option(deleted > 0) }
   }
 
   override def addWorkflowStoreEntries(workflowStoreEntries: Iterable[WorkflowStoreEntry])
@@ -71,7 +71,7 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
       )
     } yield workflowStoreEntries
 
-    runTransaction(action)
+    runTransaction(action, TransactionIsolation.ReadCommitted)
   }
 
   override def writeWorkflowHeartbeats(workflowExecutionUuids: Set[String],
@@ -84,7 +84,7 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
         dataAccess.heartbeatForWorkflowStoreEntry(workflowExecutionUuid).update(heartbeatTimestampOption)
       })
     } yield counts.sum
-    runTransaction(action)
+    runTransaction(action, TransactionIsolation.ReadCommitted)
   }
 
   override def releaseWorkflowStoreEntries(cromwellId: String)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -141,6 +141,6 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
   }
 
   override def findWorkflowsWithAbortRequested(cromwellId: String)(implicit ec: ExecutionContext): Future[Iterable[String]] = {
-    dataAccess.findWorkflowsWithAbortRequested(cromwellId).result |> runTransaction
+    runTransaction(dataAccess.findWorkflowsWithAbortRequested(cromwellId).result)
   }
 }
