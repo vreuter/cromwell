@@ -1,6 +1,6 @@
 package cromwell.engine.workflow.workflowstore
 
-import java.time.OffsetDateTime
+import java.time.{Instant, OffsetDateTime, ZoneId}
 
 import cats.data.NonEmptyList
 import com.typesafe.config.ConfigFactory
@@ -155,10 +155,12 @@ case class SqlWorkflowStore(sqlDatabase: WorkflowStoreSqlDatabase) extends Workf
     )
 
     workflowStoreStateToStartableState(workflowStoreEntry) map { startableState =>
+      val instant = Instant.ofEpochMilli(workflowStoreEntry.submissionTime.getTime)
       WorkflowToStart(
-        WorkflowId.fromString(workflowStoreEntry.workflowExecutionUuid),
-        sources,
-        startableState)
+        id = WorkflowId.fromString(workflowStoreEntry.workflowExecutionUuid),
+        submissionTime = OffsetDateTime.ofInstant(instant, ZoneId.of("UTC")),
+        sources = sources,
+        state = startableState)
     }
   }
 

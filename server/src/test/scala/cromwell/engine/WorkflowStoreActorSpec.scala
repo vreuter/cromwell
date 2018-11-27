@@ -4,7 +4,7 @@ import akka.testkit._
 import cats.data.{NonEmptyList, NonEmptyVector}
 import com.typesafe.config.{Config, ConfigFactory}
 import cromwell.core._
-import cromwell.core.abort.{AbortResponse, WorkflowAbortFailureResponse, WorkflowAbortedResponse, WorkflowAbortRequestedResponse}
+import cromwell.core.abort.{AbortResponse, WorkflowAbortFailureResponse, WorkflowAbortRequestedResponse, WorkflowAbortedResponse}
 import cromwell.database.slick.EngineSlickDatabase
 import cromwell.engine.WorkflowStoreActorSpec._
 import cromwell.engine.workflow.WorkflowManagerActor.WorkflowNotFoundException
@@ -106,7 +106,7 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
           workflowNel.toList.size shouldBe 2
           checkDistinctIds(workflowNel.toList) shouldBe true
           workflowNel map {
-            case WorkflowToStart(id, sources, state) =>
+            case WorkflowToStart(id, _, sources, state) =>
               insertedIds.contains(id) shouldBe true
               sources shouldBe prettyOptions(helloWorldSourceFiles)
               state shouldBe Submitted
@@ -119,7 +119,7 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
           workflowNel.toList.size shouldBe 1
           checkDistinctIds(workflowNel.toList) shouldBe true
           workflowNel map {
-            case WorkflowToStart(id, sources, state) =>
+            case WorkflowToStart(id, _, sources, state) =>
               insertedIds.contains(id) shouldBe true
               sources shouldBe prettyOptions(helloCwlWorldSourceFiles)
               state shouldBe Submitted
@@ -151,7 +151,7 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
           workflowNel.toList.size should be(1)
           checkDistinctIds(workflowNel.toList) should be(true)
           workflowNel.toList.foreach {
-            case WorkflowToStart(id, sources, state) =>
+            case WorkflowToStart(id, _, sources, state) =>
               insertedIds.contains(id) should be(true)
               sources.workflowSource should be(optionedSourceFiles.workflowSource)
               sources.inputsJson should be(optionedSourceFiles.inputsJson)
@@ -194,7 +194,7 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
           workflowNel.toList.size shouldBe 3
           checkDistinctIds(workflowNel.toList) shouldBe true
           workflowNel map {
-            case WorkflowToStart(id, sources, state) =>
+            case WorkflowToStart(id, _, sources, state) =>
               insertedIds.contains(id) shouldBe true
               sources shouldBe prettyOptions(helloWorldSourceFiles)
               state shouldBe Submitted
