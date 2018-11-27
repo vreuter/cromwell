@@ -45,7 +45,7 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
         }
     } yield (deleted, updated)
 
-    runTransaction(action, TransactionIsolation.ReadCommitted) map { case (deleted, updated) => if (deleted == 0 && updated == 0) None else Option(deleted > 0) }
+    runTransaction(action) map { case (deleted, updated) => if (deleted == 0 && updated == 0) None else Option(deleted > 0) }
   }
 
   override def addWorkflowStoreEntries(workflowStoreEntries: Iterable[WorkflowStoreEntry])
@@ -141,6 +141,6 @@ trait WorkflowStoreSlickDatabase extends WorkflowStoreSqlDatabase {
   }
 
   override def findWorkflowsWithAbortRequested(cromwellId: String)(implicit ec: ExecutionContext): Future[Iterable[String]] = {
-    runTransaction(dataAccess.findWorkflowsWithAbortRequested(cromwellId).result)
+    runTransaction(dataAccess.findWorkflowsWithAbortRequested(cromwellId).result, TransactionIsolation.ReadCommitted)
   }
 }
