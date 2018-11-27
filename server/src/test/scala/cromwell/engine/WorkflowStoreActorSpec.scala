@@ -1,5 +1,7 @@
 package cromwell.engine
 
+import java.time.OffsetDateTime
+
 import akka.testkit._
 import cats.data.{NonEmptyList, NonEmptyVector}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -263,7 +265,7 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
         ))
         storeActor ! SubmitWorkflow(helloWorldSourceFiles)
         val workflowId = expectMsgType[WorkflowSubmittedToStore](10.seconds).workflowId
-        coordinator ! WriteHeartbeats(NonEmptyVector.of(workflowId))
+        coordinator ! WriteHeartbeats(NonEmptyVector.of((workflowId, OffsetDateTime.now)))
         expectMsg(10.seconds, 1)
         storeActor ! AbortWorkflowCommand(workflowId)
         val abortResponse = expectMsgType[AbortResponse](10.seconds)
@@ -323,7 +325,7 @@ class WorkflowStoreActorSpec extends CromwellTestKitWordSpec with Matchers with 
 
         Await.result(futureUpdate, 10.seconds.dilated) should be(1)
 
-        coordinator ! WriteHeartbeats(NonEmptyVector.of(workflowId))
+        coordinator ! WriteHeartbeats(NonEmptyVector.of((workflowId, OffsetDateTime.now)))
 
         expectMsg(10.seconds, 1)
         storeActor ! AbortWorkflowCommand(workflowId)

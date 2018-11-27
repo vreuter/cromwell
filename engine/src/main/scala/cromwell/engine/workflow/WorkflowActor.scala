@@ -205,7 +205,7 @@ class WorkflowActor(workflowToStart: WorkflowToStart,
   with WorkflowInstrumentation with Timers {
 
   implicit val ec = context.dispatcher
-  val WorkflowToStart(workflowId, submissionTime, sources, initialStartableState) = workflowToStart
+  private val WorkflowToStart(workflowId, submissionTime, sources, initialStartableState) = workflowToStart
   override val workflowIdForLogging = workflowId.toPossiblyNotRoot
   override val rootWorkflowIdForLogging = workflowId.toRoot
 
@@ -248,7 +248,7 @@ class WorkflowActor(workflowToStart: WorkflowToStart,
       val actor = context.actorOf(MaterializeWorkflowDescriptorActor.props(serviceRegistryActor, workflowId, importLocalFilesystem = !serverMode, ioActorProxy = ioActor),
         "MaterializeWorkflowDescriptorActor")
       pushWorkflowStart(workflowId)
-      actor ! MaterializeWorkflowDescriptorCommand(workflowToStart.sources, conf)
+      actor ! MaterializeWorkflowDescriptorCommand(sources, conf)
       goto(MaterializingWorkflowDescriptorState) using stateData.copy(currentLifecycleStateActor = Option(actor))
     // If the workflow is not being restarted then we can abort it immediately as nothing happened yet
     case Event(AbortWorkflowCommand, _) if !restarting => goto(WorkflowAbortedState)
@@ -496,6 +496,6 @@ class WorkflowActor(workflowToStart: WorkflowToStart,
     goto(FinalizingWorkflowState) using data.copy(lastStateReached = StateCheckpoint (stateName, failures))
   }
 
-  private def sendHeartbeat(): Unit = workflowStoreActor ! WorkflowStoreWriteHeartbeatCommand(workflowId)
+  private def sendHeartbeat(): Unit = workflowStoreActor ! WorkflowStoreWriteHeartbeatCommand(workflowId, submissionTime)
 
 }

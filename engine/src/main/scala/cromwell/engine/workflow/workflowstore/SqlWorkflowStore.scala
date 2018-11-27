@@ -105,7 +105,7 @@ case class SqlWorkflowStore(sqlDatabase: WorkflowStoreSqlDatabase) extends Workf
     }
   }
 
-  override def writeWorkflowHeartbeats(workflowIds: Set[WorkflowId])(implicit ec: ExecutionContext): Future[Int] = {
+  override def writeWorkflowHeartbeats(workflowIds: Set[(WorkflowId, OffsetDateTime)])(implicit ec: ExecutionContext): Future[Int] = {
     sqlDatabase.writeWorkflowHeartbeats(workflowIds map { _.toString }, Option(OffsetDateTime.now.toSystemTimestamp))
   }
 
